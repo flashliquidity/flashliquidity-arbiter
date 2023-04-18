@@ -8,7 +8,7 @@ import {Governable} from "./Governable.sol";
 
 abstract contract BastionConnector is Governable {
     using SafeERC20 for IERC20;
-    address public bastion;
+    address public immutable bastion;
     event TransferredToBastion(address[] indexed _tokens, uint256[] indexed _amounts);
 
     constructor(

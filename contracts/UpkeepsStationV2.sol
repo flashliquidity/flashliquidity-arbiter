@@ -13,7 +13,7 @@ import {IUpkeepsStationV2} from "./interfaces/IUpkeepsStationV2.sol";
 import {BastionConnector} from "./types/BastionConnector.sol";
 import {UpkeepsManager} from "./types/UpkeepsManager.sol";
 
-struct UpkeepInfo {
+struct UpkeepData {
     uint256 id;
     uint256 lastTimestamp;
 }
@@ -27,7 +27,7 @@ contract UpkeepsStationV2 is
     using SafeERC20 for IERC20;
 
     address public immutable arbiter;
-    UpkeepInfo[] public upkeeps;
+    UpkeepData[] public upkeeps;
     uint256[] public canceledUpkeeps;
     uint256 public stationUpkeepId;
     uint256 public retardNextRefuel = 6 hours;
@@ -82,10 +82,10 @@ contract UpkeepsStationV2 is
     }
 
     function doesUpkeepNeedFunds(uint256 _index) private view returns (bool needFunds) {
-        UpkeepInfo memory _upkeep = upkeeps[_index];
+        UpkeepData memory _upkeep = upkeeps[_index];
         if (block.timestamp - _upkeep.lastTimestamp > retardNextRefuel) {
-            (, , , uint96 balance, , , , ) = iRegistry.getUpkeep(_upkeep.id);
-            if (balance <= minUpkeepBalance) return true;
+            (, , , uint96 _balance, , , , ) = iRegistry.getUpkeep(_upkeep.id);
+            if (_balance <= minUpkeepBalance) return true;
         }
         return false;
     }
@@ -102,7 +102,7 @@ contract UpkeepsStationV2 is
             0,
             address(this)
         );
-        upkeeps.push(UpkeepInfo(_newUpkeepId, block.timestamp));
+        upkeeps.push(UpkeepData(_newUpkeepId, block.timestamp));
     }
 
     function removeUpkeep() external onlyGovernor {
@@ -113,9 +113,11 @@ contract UpkeepsStationV2 is
     }
 
     function withdrawCanceledUpkeeps(uint256 _upkeepsNumber) external onlyGovernor {
-        uint256 canceledToWithdrawLength = canceledUpkeeps.length;
-        if (_upkeepsNumber >= canceledToWithdrawLength) revert OutOfBound();
-        uint256 _index = _upkeepsNumber == 0 ? canceledToWithdrawLength : _upkeepsNumber;
+        uint256 _canceledToWithdrawLength = canceledUpkeeps.length;
+        if (_upkeepsNumber >= _canceledToWithdrawLength) {
+            revert OutOfBound();
+        }
+        uint256 _index = _upkeepsNumber == 0 ? _canceledToWithdrawLength : _upkeepsNumber;
         do {
             unchecked {
                 _index--;
@@ -131,15 +133,20 @@ contract UpkeepsStationV2 is
     function checkUpkeep(
         bytes calldata
     ) external view override returns (bool upkeepNeeded, bytes memory performData) {
-        uint256 linkBalance = iLink.balanceOf(address(this));
-        if (linkBalance < toUpkeepAmount) return (false, new bytes(0));
+        uint256 _linkBalance = iLink.balanceOf(address(this));
+        if (_linkBalance < toUpkeepAmount) {
+            return (false, new bytes(0));
+        }
         (, , , uint96 _stationBalance, , , , ) = iRegistry.getUpkeep(stationUpkeepId);
         if (_stationBalance <= minUpkeepBalance) {
             upkeepNeeded = true;
             performData = abi.encode(uint32(0), uint256(0));
         } else {
-            for (uint256 i = 0; i < upkeeps.length; ) {
-                if (doesUpkeepNeedFunds(i)) return (true, abi.encode(uint32(1), i));
+            uint256 _upkeepsLength = upkeeps.length;
+            for (uint256 i = 0; i < _upkeepsLength; ) {
+                if (doesUpkeepNeedFunds(i)) {
+                    return (true, abi.encode(uint32(1), i));
+                }
                 unchecked {
                     i++;
                 }
@@ -149,18 +156,22 @@ contract UpkeepsStationV2 is
 
     function performUpkeep(bytes calldata performData) external override {
         (uint32 _mode, uint256 _upkeepIndex) = abi.decode(performData, (uint32, uint256));
-        uint256 amount = toUpkeepAmount;
+        uint256 _amount = toUpkeepAmount;
         if (_mode == 0) {
             (, , , uint96 _stationBalance, , , , ) = iRegistry.getUpkeep(stationUpkeepId);
-            if (_stationBalance > minUpkeepBalance) revert RefuelNotNeeded();
-            iLink.approve(address(iRegistry), amount);
-            iRegistry.addFunds(stationUpkeepId, uint96(amount));
+            if (_stationBalance > minUpkeepBalance) {
+                revert RefuelNotNeeded();
+            }
+            iLink.approve(address(iRegistry), _amount);
+            iRegistry.addFunds(stationUpkeepId, uint96(_amount));
         } else if (_mode == 1) {
             uint256 _upkeepId = upkeeps[_upkeepIndex].id;
             (, , , uint96 _upkeepBalance, , , , ) = iRegistry.getUpkeep(_upkeepId);
-            if (_upkeepBalance > minUpkeepBalance) revert RefuelNotNeeded();
-            iLink.approve(address(iRegistry), amount);
-            iRegistry.addFunds(_upkeepId, uint96(amount));
+            if (_upkeepBalance > minUpkeepBalance) {
+                revert RefuelNotNeeded();
+            }
+            iLink.approve(address(iRegistry), _amount);
+            iRegistry.addFunds(_upkeepId, uint96(_amount));
         } else {
             revert InvalidPerformData();
         }

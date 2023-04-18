@@ -19,44 +19,43 @@ abstract contract UpkeepsManager {
     }
 
     function registerUpkeep(
-        string memory name,
-        address upkeepContract,
-        uint32 gasLimit,
-        address adminAddress,
-        bytes memory checkData,
-        uint96 amount,
-        uint8 source,
-        address sender
-    ) internal returns (uint256 upkeepID) {
-        (State memory state, Config memory _c, address[] memory _k) = iRegistry.getState();
-        uint256 oldNonce = state.nonce;
+        string memory _name,
+        address _upkeepContract,
+        uint32 _gasLimit,
+        address _adminAddress,
+        bytes memory _checkData,
+        uint96 _amount,
+        uint8 _source,
+        address _sender
+    ) internal returns (uint256 _upkeepID) {
+        (State memory _state, Config memory _c, address[] memory _k) = iRegistry.getState();
+        uint256 _oldNonce = _state.nonce;
 
         bytes memory payload = abi.encode(
-            name,
+            _name,
             new bytes(0),
-            upkeepContract,
-            gasLimit,
-            adminAddress,
-            checkData,
-            amount,
-            source,
-            sender
+            _upkeepContract,
+            _gasLimit,
+            _adminAddress,
+            _checkData,
+            _amount,
+            _source,
+            _sender
         );
 
         iLink.transferAndCall(
             registrar,
-            amount,
+            _amount,
             bytes.concat(KeeperRegistrarInterface.register.selector, payload)
         );
-        (state, _c, _k) = iRegistry.getState();
-        uint256 newNonce = state.nonce;
-        if (newNonce == oldNonce + 1) {
-            upkeepID = uint256(
+        (_state, _c, _k) = iRegistry.getState();
+        if (_state.nonce == _oldNonce + 1) {
+            _upkeepID = uint256(
                 keccak256(
                     abi.encodePacked(
                         blockhash(block.number - 1),
                         address(iRegistry),
-                        uint32(oldNonce)
+                        uint32(_oldNonce)
                     )
                 )
             );

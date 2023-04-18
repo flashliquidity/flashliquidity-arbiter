@@ -1,4 +1,4 @@
-import { ethers } from "hardhat"
+import { ethers, network } from "hardhat"
 import { expect } from "chai"
 import { setStorageAt, time } from "@nomicfoundation/hardhat-network-helpers"
 import { ADDRESS_ZERO, FACTORY_ADDR, ROUTER_ADDR } from "./utilities"
@@ -14,6 +14,9 @@ describe("Arbiter", function () {
         this.alice = this.signers[4]
         this.farm = this.signers[5]
         this.lpToken = this.signers[6]
+        this.adjFactor = 100
+        this.reserveToProfitRatio = 10000
+        this.maxStaleness = 180
         this.maticUsdcPair = "0x0C9580eC848bd48EBfCB85A4aE1f0354377315fD"
         this.Arbiter = await ethers.getContractFactory("Arbiter")
         this.ERC20 = await ethers.getContractFactory("ERC20")
@@ -26,10 +29,23 @@ describe("Arbiter", function () {
     })
 
     beforeEach(async function () {
+        await network.provider.request({
+            method: "hardhat_reset",
+            params: [
+                {
+                    forking: {
+                        enabled: true,
+                        jsonRpcUrl: process.env.ALCHEMY_MAINNET_RPC_URL,
+                        blockNumber: 41400000,
+                    },
+                },
+            ],
+        })
         this.arbiter = await this.Arbiter.deploy(
             this.governor.address,
             this.governor.address,
-            this.transferGovernanceDelay
+            this.transferGovernanceDelay,
+            this.maxStaleness
         )
         await this.arbiter.deployed()
         await this.arbiter.setPriceFeeds(
@@ -43,7 +59,11 @@ describe("Arbiter", function () {
             ]
         )
         await this.arbiter.setQuoters(
-            [1, 2, 3],
+            [
+                "0xA374094527e1673A86dE625aa59517c5dE346d32",
+                "0xAE81FAc689A1b4b1e06e7ef4a2ab4CD8aC0A087D",
+                "0x50FEEdF7fB2F511112287091819F21eb0F3Ce498",
+            ],
             [
                 "0x7637Aaeb5BD58269B782726680d83f72C651aE74",
                 "0x2E0A046481c676235B806Bd004C4b492C850fb34",
@@ -62,6 +82,7 @@ describe("Arbiter", function () {
                 "0xC1e7dFE73E1598E3910EF4C7845B68A9Ab6F4c83",
             ]
         )
+        this.usdc = this.ERC20.attach("0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174")
         await setStorageAt(
             this.factory.address,
             2,
@@ -95,36 +116,87 @@ describe("Arbiter", function () {
 
     it("Should allow only Governor to set quoters", async function () {
         await expect(
-            this.arbiter.connect(this.bob).setQuoters([0], [this.bob.address])
+            this.arbiter.connect(this.bob).setQuoters([this.alice.address], [this.bob.address])
         ).to.be.revertedWith("NotAuthorized()")
-        await this.arbiter.connect(this.governor).setQuoters([0], [this.bob.address])
+        await this.arbiter
+            .connect(this.governor)
+            .setQuoters([this.alice.address], [this.bob.address])
     })
 
-    it("Should allow only Governor to set routers", async function () {
+    it("Should allow only Governor to set max staleness", async function () {
+        await expect(this.arbiter.connect(this.bob).setMaxStaleness(120)).to.be.revertedWith(
+            "NotAuthorized()"
+        )
+        await this.arbiter.connect(this.governor).setMaxStaleness(120)
+    })
+
+    it("Should allow only Governor to set token decimals on job config", async function () {
         await expect(
-            this.arbiter.connect(this.bob).setRouters([this.bob.address], [this.bob.address])
+            this.arbiter.connect(this.bob).setConfigTokensDecimals(this.maticUsdcPair, 8, 8)
         ).to.be.revertedWith("NotAuthorized()")
-        await this.arbiter.connect(this.governor).setRouters([this.bob.address], [this.bob.address])
+        await this.arbiter.connect(this.governor).setConfigTokensDecimals(this.maticUsdcPair, 8, 8)
     })
 
     it("Should allow only Governor to push new jobs", async function () {
+        await this.factory
+            .connect(this.governor)
+            .setPairManager(this.maticUsdcPair, this.arbiter.address)
         await expect(
             this.arbiter
                 .connect(this.bob)
-                .pushArbiterJob(this.bob.address, this.maticUsdcPair, 0, 5000000, true, [])
+                .pushArbiterJob(
+                    this.bob.address,
+                    this.maticUsdcPair,
+                    this.adjFactor,
+                    this.reserveToProfitRatio,
+                    true,
+                    [],
+                    [],
+                    []
+                )
         ).to.be.revertedWith("NotAuthorized()")
         await this.arbiter
             .connect(this.governor)
-            .pushArbiterJob(this.bob.address, this.maticUsdcPair, 1000, 5000000, true, [])
+            .pushArbiterJob(
+                this.bob.address,
+                this.maticUsdcPair,
+                this.adjFactor,
+                this.reserveToProfitRatio,
+                true,
+                [],
+                [],
+                []
+            )
     })
 
     it("Should allow only Governor to remove jobs", async function () {
+        await this.factory
+            .connect(this.governor)
+            .setPairManager(this.maticUsdcPair, this.arbiter.address)
         await this.arbiter
             .connect(this.governor)
-            .pushArbiterJob(this.bob.address, this.maticUsdcPair, 1000, 5000000, true, [])
+            .pushArbiterJob(
+                this.bob.address,
+                this.maticUsdcPair,
+                this.adjFactor,
+                this.reserveToProfitRatio,
+                true,
+                [],
+                [],
+                []
+            )
         await this.arbiter
             .connect(this.governor)
-            .pushArbiterJob(this.alice.address, this.maticUsdcPair, 1000, 5000000, true, [])
+            .pushArbiterJob(
+                this.alice.address,
+                this.maticUsdcPair,
+                this.adjFactor,
+                this.reserveToProfitRatio,
+                true,
+                [],
+                [],
+                []
+            )
         await expect(this.arbiter.connect(this.bob).removeArbiterJob(0)).to.be.revertedWith(
             "NotAuthorized()"
         )
@@ -133,34 +205,36 @@ describe("Arbiter", function () {
     })
 
     it("Should allow only Governor to push new pools to job", async function () {
+        await this.factory
+            .connect(this.governor)
+            .setPairManager(this.maticUsdcPair, this.arbiter.address)
         await this.arbiter
             .connect(this.governor)
-            .pushArbiterJob(this.bob.address, this.maticUsdcPair, 1000, 5000000, true, [])
+            .pushArbiterJob(
+                this.bob.address,
+                this.maticUsdcPair,
+                this.adjFactor,
+                this.reserveToProfitRatio,
+                true,
+                [],
+                [],
+                []
+            )
         await expect(
-            this.arbiter.connect(this.bob).pushPoolToJob(0, this.bob.address, 1, 500)
+            this.arbiter
+                .connect(this.bob)
+                .pushPoolToJob(0, "0xA374094527e1673A86dE625aa59517c5dE346d32", 1, 500)
         ).to.be.revertedWith("NotAuthorized()")
-        await this.arbiter.connect(this.governor).pushPoolToJob(0, this.bob.address, 1, 500)
+        await this.arbiter
+            .connect(this.governor)
+            .pushPoolToJob(0, "0xA374094527e1673A86dE625aa59517c5dE346d32", 1, 500)
         await expect(this.arbiter.connect(this.bob).removePoolFromJob(0, 0)).to.be.revertedWith(
             "NotAuthorized()"
         )
         await this.arbiter.connect(this.governor).removePoolFromJob(0, 0)
     })
 
-    it("Simulation: token0 IN, token1 OUT, target: UNI-V2", async function () {
-        await this.arbiter.pushArbiterJob(
-            this.governor.address,
-            this.maticUsdcPair,
-            1000,
-            5000000,
-            true,
-            [
-                {
-                    poolAddr: "0x6e7a5FAFcec6BB1e78bAE2A1F0B612012BF14827", // UNI v2
-                    poolType: 0,
-                    poolFee: 9970,
-                },
-            ]
-        )
+    it("SIMULATION: token0 IN, token1 OUT, target: UNI-V2", async function () {
         const jobId = ethers.utils.defaultAbiCoder.encode(["uint256"], ["0"])
         await this.router
             .connect(this.governor)
@@ -172,31 +246,27 @@ describe("Arbiter", function () {
                 ],
                 this.governor.address,
                 2000000000,
-                { value: ethers.utils.parseEther("10") }
+                { value: ethers.utils.parseEther("30") }
             )
         await this.factory
             .connect(this.governor)
             .setPairManager(this.maticUsdcPair, this.arbiter.address)
-        const ret = await this.arbiter.checkUpkeep(jobId)
-        await this.arbiter.performUpkeep(ret.performData)
-        await this.factory.connect(this.governor).setPairManager(this.maticUsdcPair, ADDRESS_ZERO)
-    })
-
-    it("Simulation: token1 IN, token0 OUT, target: UNI-V2", async function () {
         await this.arbiter.pushArbiterJob(
             this.governor.address,
             this.maticUsdcPair,
-            1000,
-            5000000,
+            this.adjFactor,
+            this.reserveToProfitRatio,
             true,
-            [
-                {
-                    poolAddr: "0x6e7a5FAFcec6BB1e78bAE2A1F0B612012BF14827", // UNI v2
-                    poolType: 0,
-                    poolFee: 9970,
-                },
-            ]
+            ["0x6e7a5FAFcec6BB1e78bAE2A1F0B612012BF14827"],
+            [0],
+            [9970]
         )
+        const ret = await this.arbiter.checkUpkeep(jobId)
+        expect(ret.upkeepNeeded).to.be.true
+        await this.arbiter.performUpkeep(ret.performData)
+    })
+
+    it("SIMULATION: token1 IN, token0 OUT, target: UNI-V2", async function () {
         const jobId = ethers.utils.defaultAbiCoder.encode(["uint256"], ["0"])
         await this.extRouter
             .connect(this.governor)
@@ -208,7 +278,85 @@ describe("Arbiter", function () {
                 ],
                 this.governor.address,
                 2000000000,
-                { value: ethers.utils.parseEther("10") }
+                { value: ethers.utils.parseEther("30") }
+            )
+        const balance = this.usdc.balanceOf(this.governor.address)
+        this.usdc.connect(this.governor).approve(this.router.address, balance)
+        await this.router
+            .connect(this.governor)
+            .swapExactTokensForTokens(
+                balance,
+                0,
+                [
+                    "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
+                    "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270",
+                ],
+                this.governor.address,
+                2000000000
+            )
+        await this.factory
+            .connect(this.governor)
+            .setPairManager(this.maticUsdcPair, this.arbiter.address)
+        await this.arbiter.pushArbiterJob(
+            this.governor.address,
+            this.maticUsdcPair,
+            this.adjFactor,
+            this.reserveToProfitRatio,
+            true,
+            ["0x6e7a5FAFcec6BB1e78bAE2A1F0B612012BF14827"],
+            [0],
+            [9970]
+        )
+        const ret = await this.arbiter.checkUpkeep(jobId)
+        expect(ret.upkeepNeeded).to.be.true
+        await this.arbiter.performUpkeep(ret.performData)
+    })
+
+    it("SIMULATION: token0 IN, token1 OUT, target: UNI-V3", async function () {
+        const jobId = ethers.utils.defaultAbiCoder.encode(["uint256"], ["0"])
+        await this.router
+            .connect(this.governor)
+            .swapExactETHForTokens(
+                0,
+                [
+                    "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270",
+                    "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
+                ],
+                this.governor.address,
+                2000000000,
+                { value: ethers.utils.parseEther("30") }
+            )
+        await this.factory
+            .connect(this.governor)
+            .setPairManager(this.maticUsdcPair, this.arbiter.address)
+        await this.arbiter.pushArbiterJob(
+            this.governor.address,
+            this.maticUsdcPair,
+            this.adjFactor,
+            this.reserveToProfitRatio,
+            true,
+            ["0xA374094527e1673A86dE625aa59517c5dE346d32"],
+            [1],
+            [500]
+        )
+        const ret = await this.arbiter.checkUpkeep(jobId)
+        expect(ret.upkeepNeeded).to.be.true
+        await this.arbiter.performUpkeep(ret.performData)
+    })
+
+    it("SIMULATION: token1 IN, token0 OUT, target: UNI-V3", async function () {
+        const jobId = ethers.utils.defaultAbiCoder.encode(["uint256"], ["0"])
+        await this.extRouter
+            .connect(this.governor)
+            .swapExactETHForTokens(
+                0,
+                [
+                    "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270",
+                    "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
+                ],
+                this.governor.address,
+                2000000000,
+                { value: ethers.utils.parseEther("30") }
             )
         this.usdc = this.ERC20.attach("0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174")
         const balance = this.usdc.balanceOf(this.governor.address)
@@ -228,26 +376,22 @@ describe("Arbiter", function () {
         await this.factory
             .connect(this.governor)
             .setPairManager(this.maticUsdcPair, this.arbiter.address)
-        const ret = await this.arbiter.checkUpkeep(jobId)
-        await this.arbiter.performUpkeep(ret.performData)
-        await this.factory.connect(this.governor).setPairManager(this.maticUsdcPair, ADDRESS_ZERO)
-    })
-
-    it("Simulation: token0 IN, token1 OUT, target: UNI-V3", async function () {
         await this.arbiter.pushArbiterJob(
             this.governor.address,
             this.maticUsdcPair,
-            1000,
-            5000000,
+            this.adjFactor,
+            this.reserveToProfitRatio,
             true,
-            [
-                {
-                    poolAddr: "0xA374094527e1673A86dE625aa59517c5dE346d32", // UNI v3
-                    poolType: 1,
-                    poolFee: 500,
-                },
-            ]
+            ["0xA374094527e1673A86dE625aa59517c5dE346d32"],
+            [1],
+            [500]
         )
+        const ret = await this.arbiter.checkUpkeep(jobId)
+        expect(ret.upkeepNeeded).to.be.true
+        await this.arbiter.performUpkeep(ret.performData)
+    })
+
+    it("SIMULATION: token0 IN, token1 OUT, target: Algebra", async function () {
         const jobId = ethers.utils.defaultAbiCoder.encode(["uint256"], ["0"])
         await this.router
             .connect(this.governor)
@@ -259,31 +403,27 @@ describe("Arbiter", function () {
                 ],
                 this.governor.address,
                 2000000000,
-                { value: ethers.utils.parseEther("10") }
+                { value: ethers.utils.parseEther("30") }
             )
         await this.factory
             .connect(this.governor)
             .setPairManager(this.maticUsdcPair, this.arbiter.address)
-        const ret = await this.arbiter.checkUpkeep(jobId)
-        await this.arbiter.performUpkeep(ret.performData)
-        await this.factory.connect(this.governor).setPairManager(this.maticUsdcPair, ADDRESS_ZERO)
-    })
-
-    it("Simulation: token1 IN, token0 OUT, target: UNI-V3", async function () {
         await this.arbiter.pushArbiterJob(
             this.governor.address,
             this.maticUsdcPair,
-            1000,
-            5000000,
+            this.adjFactor,
+            this.reserveToProfitRatio,
             true,
-            [
-                {
-                    poolAddr: "0xA374094527e1673A86dE625aa59517c5dE346d32", // UNI v3
-                    poolType: 1,
-                    poolFee: 500,
-                },
-            ]
+            ["0xAE81FAc689A1b4b1e06e7ef4a2ab4CD8aC0A087D"],
+            [2],
+            [350]
         )
+        const ret = await this.arbiter.checkUpkeep(jobId)
+        expect(ret.upkeepNeeded).to.be.true
+        await this.arbiter.performUpkeep(ret.performData)
+    })
+
+    it("SIMULATION: token1 IN, token0 OUT, target: Algebra", async function () {
         const jobId = ethers.utils.defaultAbiCoder.encode(["uint256"], ["0"])
         await this.extRouter
             .connect(this.governor)
@@ -295,9 +435,8 @@ describe("Arbiter", function () {
                 ],
                 this.governor.address,
                 2000000000,
-                { value: ethers.utils.parseEther("10") }
+                { value: ethers.utils.parseEther("30") }
             )
-        this.usdc = this.ERC20.attach("0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174")
         const balance = this.usdc.balanceOf(this.governor.address)
         this.usdc.connect(this.governor).approve(this.router.address, balance)
         await this.router
@@ -315,26 +454,22 @@ describe("Arbiter", function () {
         await this.factory
             .connect(this.governor)
             .setPairManager(this.maticUsdcPair, this.arbiter.address)
-        const ret = await this.arbiter.checkUpkeep(jobId)
-        await this.arbiter.performUpkeep(ret.performData)
-        await this.factory.connect(this.governor).setPairManager(this.maticUsdcPair, ADDRESS_ZERO)
-    })
-
-    it("Simulation: token0 IN, token1 OUT, target: Algebra", async function () {
         await this.arbiter.pushArbiterJob(
             this.governor.address,
             this.maticUsdcPair,
-            1000,
-            5000000,
+            this.adjFactor,
+            this.reserveToProfitRatio,
             true,
-            [
-                {
-                    poolAddr: "0xAE81FAc689A1b4b1e06e7ef4a2ab4CD8aC0A087D", // Algebra
-                    poolType: 2,
-                    poolFee: 350,
-                },
-            ]
+            ["0xAE81FAc689A1b4b1e06e7ef4a2ab4CD8aC0A087D"],
+            [2],
+            [350]
         )
+        const ret = await this.arbiter.checkUpkeep(jobId)
+        expect(ret.upkeepNeeded).to.be.true
+        await this.arbiter.performUpkeep(ret.performData)
+    })
+
+    it("SIMULATION: token0 IN, token1 OUT, target: Kyberswap", async function () {
         const jobId = ethers.utils.defaultAbiCoder.encode(["uint256"], ["0"])
         await this.router
             .connect(this.governor)
@@ -346,31 +481,27 @@ describe("Arbiter", function () {
                 ],
                 this.governor.address,
                 2000000000,
-                { value: ethers.utils.parseEther("10") }
+                { value: ethers.utils.parseEther("30") }
             )
         await this.factory
             .connect(this.governor)
             .setPairManager(this.maticUsdcPair, this.arbiter.address)
-        const ret = await this.arbiter.checkUpkeep(jobId)
-        await this.arbiter.performUpkeep(ret.performData)
-        await this.factory.connect(this.governor).setPairManager(this.maticUsdcPair, ADDRESS_ZERO)
-    })
-
-    it("Simulation: token1 IN, token0 OUT, target: Algebra", async function () {
         await this.arbiter.pushArbiterJob(
             this.governor.address,
             this.maticUsdcPair,
-            1000,
-            5000000,
+            this.adjFactor,
+            this.reserveToProfitRatio,
             true,
-            [
-                {
-                    poolAddr: "0xAE81FAc689A1b4b1e06e7ef4a2ab4CD8aC0A087D", // Algebra
-                    poolType: 2,
-                    poolFee: 350,
-                },
-            ]
+            ["0x50FEEdF7fB2F511112287091819F21eb0F3Ce498"],
+            [3],
+            [1000]
         )
+        const ret = await this.arbiter.checkUpkeep(jobId)
+        expect(ret.upkeepNeeded).to.be.true
+        await this.arbiter.performUpkeep(ret.performData)
+    })
+
+    it("SIMULATION: token1 IN, token0 OUT, target: Kyberswap", async function () {
         const jobId = ethers.utils.defaultAbiCoder.encode(["uint256"], ["0"])
         await this.extRouter
             .connect(this.governor)
@@ -382,9 +513,8 @@ describe("Arbiter", function () {
                 ],
                 this.governor.address,
                 2000000000,
-                { value: ethers.utils.parseEther("10") }
+                { value: ethers.utils.parseEther("30") }
             )
-        this.usdc = this.ERC20.attach("0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174")
         const balance = this.usdc.balanceOf(this.governor.address)
         this.usdc.connect(this.governor).approve(this.router.address, balance)
         await this.router
@@ -402,26 +532,22 @@ describe("Arbiter", function () {
         await this.factory
             .connect(this.governor)
             .setPairManager(this.maticUsdcPair, this.arbiter.address)
-        const ret = await this.arbiter.checkUpkeep(jobId)
-        await this.arbiter.performUpkeep(ret.performData)
-        await this.factory.connect(this.governor).setPairManager(this.maticUsdcPair, ADDRESS_ZERO)
-    })
-
-    it("Simulation: token0 IN, token1 OUT, target: Kyberswap", async function () {
         await this.arbiter.pushArbiterJob(
             this.governor.address,
             this.maticUsdcPair,
-            1000,
-            5000000,
+            this.adjFactor,
+            this.reserveToProfitRatio,
             true,
-            [
-                {
-                    poolAddr: "0x50FEEdF7fB2F511112287091819F21eb0F3Ce498", //Kyberswap
-                    poolType: 3,
-                    poolFee: 1000,
-                },
-            ]
+            ["0x50FEEdF7fB2F511112287091819F21eb0F3Ce498"],
+            [3],
+            [1000]
         )
+        const ret = await this.arbiter.checkUpkeep(jobId)
+        expect(ret.upkeepNeeded).to.be.true
+        await this.arbiter.performUpkeep(ret.performData)
+    })
+
+    it("SIMULATION: Full rebalancing scenario: token0 IN, token1 OUT", async function () {
         const jobId = ethers.utils.defaultAbiCoder.encode(["uint256"], ["0"])
         await this.router
             .connect(this.governor)
@@ -433,31 +559,32 @@ describe("Arbiter", function () {
                 ],
                 this.governor.address,
                 2000000000,
-                { value: ethers.utils.parseEther("10") }
+                { value: ethers.utils.parseEther("30") }
             )
         await this.factory
             .connect(this.governor)
             .setPairManager(this.maticUsdcPair, this.arbiter.address)
-        const ret = await this.arbiter.checkUpkeep(jobId)
-        await this.arbiter.performUpkeep(ret.performData)
-        await this.factory.connect(this.governor).setPairManager(this.maticUsdcPair, ADDRESS_ZERO)
-    })
-
-    it("Simulation: token1 IN, token0 OUT, target: Kyberswap", async function () {
         await this.arbiter.pushArbiterJob(
             this.governor.address,
             this.maticUsdcPair,
-            1000,
-            5000000,
+            this.adjFactor,
+            this.reserveToProfitRatio,
             true,
             [
-                {
-                    poolAddr: "0x50FEEdF7fB2F511112287091819F21eb0F3Ce498", //Kyberswap
-                    poolType: 3,
-                    poolFee: 1000,
-                },
-            ]
+                "0x6e7a5FAFcec6BB1e78bAE2A1F0B612012BF14827",
+                "0xA374094527e1673A86dE625aa59517c5dE346d32",
+                "0xAE81FAc689A1b4b1e06e7ef4a2ab4CD8aC0A087D",
+                "0x50FEEdF7fB2F511112287091819F21eb0F3Ce498",
+            ],
+            [0, 1, 2, 3],
+            [9970, 500, 350, 1000]
         )
+        const ret = await this.arbiter.checkUpkeep(jobId)
+        expect(ret.upkeepNeeded).to.be.true
+        await this.arbiter.performUpkeep(ret.performData)
+    })
+
+    it("SIMULATION: Full rebalancing scenario: token1 IN, token0 OUT", async function () {
         const jobId = ethers.utils.defaultAbiCoder.encode(["uint256"], ["0"])
         await this.extRouter
             .connect(this.governor)
@@ -469,9 +596,8 @@ describe("Arbiter", function () {
                 ],
                 this.governor.address,
                 2000000000,
-                { value: ethers.utils.parseEther("10") }
+                { value: ethers.utils.parseEther("30") }
             )
-        this.usdc = this.ERC20.attach("0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174")
         const balance = this.usdc.balanceOf(this.governor.address)
         this.usdc.connect(this.governor).approve(this.router.address, balance)
         await this.router
@@ -489,125 +615,23 @@ describe("Arbiter", function () {
         await this.factory
             .connect(this.governor)
             .setPairManager(this.maticUsdcPair, this.arbiter.address)
-        const ret = await this.arbiter.checkUpkeep(jobId)
-        await this.arbiter.performUpkeep(ret.performData)
-        await this.factory.connect(this.governor).setPairManager(this.maticUsdcPair, ADDRESS_ZERO)
-    })
-
-    it("Simulation: Full rebalancing scenario token0 IN, token1 OUT", async function () {
         await this.arbiter.pushArbiterJob(
             this.governor.address,
             this.maticUsdcPair,
-            1000,
-            5000000,
+            this.adjFactor,
+            this.reserveToProfitRatio,
             true,
             [
-                {
-                    poolAddr: "0x6e7a5FAFcec6BB1e78bAE2A1F0B612012BF14827", // UNI v2
-                    poolType: 0,
-                    poolFee: 9970,
-                },
-                {
-                    poolAddr: "0xA374094527e1673A86dE625aa59517c5dE346d32", // UNI v3
-                    poolType: 1,
-                    poolFee: 500,
-                },
-                {
-                    poolAddr: "0xAE81FAc689A1b4b1e06e7ef4a2ab4CD8aC0A087D", // Algebra
-                    poolType: 2,
-                    poolFee: 350,
-                },
-                {
-                    poolAddr: "0x50FEEdF7fB2F511112287091819F21eb0F3Ce498", //Kyberswap
-                    poolType: 3,
-                    poolFee: 1000,
-                },
-            ]
+                "0x6e7a5FAFcec6BB1e78bAE2A1F0B612012BF14827",
+                "0xA374094527e1673A86dE625aa59517c5dE346d32",
+                "0xAE81FAc689A1b4b1e06e7ef4a2ab4CD8aC0A087D",
+                "0x50FEEdF7fB2F511112287091819F21eb0F3Ce498",
+            ],
+            [0, 1, 2, 3],
+            [9970, 500, 350, 1000]
         )
-        const jobId = ethers.utils.defaultAbiCoder.encode(["uint256"], ["0"])
-        await this.router
-            .connect(this.governor)
-            .swapExactETHForTokens(
-                0,
-                [
-                    "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270",
-                    "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
-                ],
-                this.governor.address,
-                2000000000,
-                { value: ethers.utils.parseEther("10") }
-            )
-        await this.factory
-            .connect(this.governor)
-            .setPairManager(this.maticUsdcPair, this.arbiter.address)
         const ret = await this.arbiter.checkUpkeep(jobId)
+        expect(ret.upkeepNeeded).to.be.true
         await this.arbiter.performUpkeep(ret.performData)
-        await this.factory.connect(this.governor).setPairManager(this.maticUsdcPair, ADDRESS_ZERO)
-    })
-
-    it("Simulation: Full rebalancing scenario token1 IN, token0 OUT", async function () {
-        await this.arbiter.pushArbiterJob(
-            this.governor.address,
-            this.maticUsdcPair,
-            1000,
-            5000000,
-            true,
-            [
-                {
-                    poolAddr: "0x6e7a5FAFcec6BB1e78bAE2A1F0B612012BF14827", // UNI v2
-                    poolType: 0,
-                    poolFee: 9970,
-                },
-                {
-                    poolAddr: "0xA374094527e1673A86dE625aa59517c5dE346d32", // UNI v3
-                    poolType: 1,
-                    poolFee: 500,
-                },
-                {
-                    poolAddr: "0xAE81FAc689A1b4b1e06e7ef4a2ab4CD8aC0A087D", // Algebra
-                    poolType: 2,
-                    poolFee: 350,
-                },
-                {
-                    poolAddr: "0x50FEEdF7fB2F511112287091819F21eb0F3Ce498", //Kyberswap
-                    poolType: 3,
-                    poolFee: 1000,
-                },
-            ]
-        )
-        const jobId = ethers.utils.defaultAbiCoder.encode(["uint256"], ["0"])
-        await this.extRouter
-            .connect(this.governor)
-            .swapExactETHForTokens(
-                0,
-                [
-                    "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270",
-                    "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
-                ],
-                this.governor.address,
-                2000000000,
-                { value: ethers.utils.parseEther("10") }
-            )
-        this.usdc = this.ERC20.attach("0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174")
-        const balance = this.usdc.balanceOf(this.governor.address)
-        this.usdc.connect(this.governor).approve(this.router.address, balance)
-        await this.router
-            .connect(this.governor)
-            .swapExactTokensForTokens(
-                balance,
-                0,
-                [
-                    "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
-                    "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270",
-                ],
-                this.governor.address,
-                2000000000
-            )
-        await this.factory
-            .connect(this.governor)
-            .setPairManager(this.maticUsdcPair, this.arbiter.address)
-        const ret = await this.arbiter.checkUpkeep(jobId)
-        await this.arbiter.performUpkeep(ret.performData)
-        await this.factory.connect(this.governor).setPairManager(this.maticUsdcPair, ADDRESS_ZERO)
     })
 })

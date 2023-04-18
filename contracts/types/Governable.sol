@@ -22,7 +22,9 @@ abstract contract Governable {
     }
 
     function setPendingGovernor(address _pendingGovernor) external onlyGovernor {
-        if (_pendingGovernor == address(0)) revert ZeroAddress();
+        if (_pendingGovernor == address(0)) {
+            revert ZeroAddress();
+        }
         pendingGovernor = _pendingGovernor;
         govTransferReqTimestamp = block.timestamp;
         emit PendingGovernorChanged(_pendingGovernor);
@@ -31,16 +33,24 @@ abstract contract Governable {
     function transferGovernance() external {
         address _newGovernor = pendingGovernor;
         address _oldGovernor = governor;
-        if (_newGovernor == address(0)) revert ZeroAddress();
-        if (msg.sender != _oldGovernor && msg.sender != _newGovernor) revert NotAuthorized();
-        if (block.timestamp - govTransferReqTimestamp < transferGovernanceDelay) revert TooEarly();
+        if (_newGovernor == address(0)) {
+            revert ZeroAddress();
+        }
+        if (msg.sender != _oldGovernor && msg.sender != _newGovernor) {
+            revert NotAuthorized();
+        }
+        if (block.timestamp - govTransferReqTimestamp < transferGovernanceDelay) {
+            revert TooEarly();
+        }
         pendingGovernor = address(0);
         governor = _newGovernor;
         emit GovernanceTrasferred(_oldGovernor, _newGovernor);
     }
 
     modifier onlyGovernor() {
-        if (msg.sender != governor) revert NotAuthorized();
+        if (msg.sender != governor) {
+            revert NotAuthorized();
+        }
         _;
     }
 }
