@@ -4,8 +4,8 @@ This repository includes the smart contracts of FlashLiquidity arbitrage automat
 
 # Addresses and Verified Source Code:
 
-- Arbiter: https://polygonscan.com/address/0x66172DfE0708AB71FdB533576a61234A8B66f987
-- UpkeepsStationV2: https://polygonscan.com/address/0x576b4fa467256566Cd59158787798c798c7C5024
+- Arbiter: https://polygonscan.com/address/0xe885588BCA3A5Cbc9CA006c66d380DE3EDB5562a
+- UpkeepsStationV2: https://polygonscan.com/address/0x92193397B6197a225624CC81316F0B5D03d3Fa85
 
 ## Install Dependencies
 
