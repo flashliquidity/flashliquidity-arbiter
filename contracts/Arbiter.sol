@@ -2,7 +2,7 @@
 
 pragma solidity 0.8.17;
 
-import {ERC20, IERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {IERC20, IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {AutomationCompatible} from "@chainlink/contracts/src/v0.8/AutomationCompatible.sol";
 import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
@@ -93,10 +93,9 @@ contract Arbiter is IArbiter, BastionConnector, AutomationCompatible {
     }
     struct ArbiterCall {
         uint32 jobIndex;
-        uint112 amountInFlash;
-        uint112 amountOutFlash;
+        uint256 amountInFlash;
+        uint256 amountOutFlash;
         uint32 bestPoolIndex;
-        uint112 amountOutExt;
         bool tokenInIsRewardToken;
         bool zeroToOne;
     }
@@ -105,8 +104,7 @@ contract Arbiter is IArbiter, BastionConnector, AutomationCompatible {
         Pool targetPool;
         address token0;
         address token1;
-        uint112 amountDebt;
-        uint112 amountOutExt;
+        uint256 amountDebt;
         bool zeroToOne;
     }
 
@@ -251,10 +249,10 @@ contract Arbiter is IArbiter, BastionConnector, AutomationCompatible {
         );
         ArbiterJobConfig storage config = jobsConfig[_flashPool];
         if (config.token0Decimals == 0) {
-            config.token0Decimals = ERC20(_token0).decimals();
+            config.token0Decimals = IERC20Metadata(_token0).decimals();
         }
         if (config.token1Decimals == 0) {
-            config.token1Decimals = ERC20(_token1).decimals();
+            config.token1Decimals = IERC20Metadata(_token1).decimals();
         }
         config.adjFactor = _adjFactor;
         config.reserveToProfitRatio = _reserveToProfitRatio;
@@ -288,8 +286,8 @@ contract Arbiter is IArbiter, BastionConnector, AutomationCompatible {
     ) external onlyGovernor {
         if (_reserveToProfitRatio == 0) revert ZeroProfit();
         if (_adjFactor < 10) revert AdjFactorTooLow();
-        ArbiterJob memory job = jobs[_jobIndex];
-        ArbiterJobConfig storage config = jobsConfig[job.flPool];
+        ArbiterJob memory _job = jobs[_jobIndex];
+        ArbiterJobConfig storage config = jobsConfig[_job.flPool];
         config.adjFactor = _adjFactor;
         config.reserveToProfitRatio = _reserveToProfitRatio;
         emit JobParamsChanged(_jobIndex, _adjFactor, _reserveToProfitRatio);
@@ -305,12 +303,12 @@ contract Arbiter is IArbiter, BastionConnector, AutomationCompatible {
         config.token1Decimals = _token1Decimals;
     }
 
-    function removeArbiterJob(uint256 jobIndex) external onlyGovernor {
-        ArbiterJob storage job = jobs[jobIndex];
+    function removeArbiterJob(uint256 _jobIndex) external onlyGovernor {
+        ArbiterJob storage job = jobs[_jobIndex];
         ArbiterJobConfig storage config = jobsConfig[job.flPool];
-        uint256 jobLastIndex = jobs.length - 1;
-        if (jobIndex < jobLastIndex) {
-            job = jobs[jobLastIndex];
+        uint256 _jobLastIndex = jobs.length - 1;
+        if (_jobIndex < _jobLastIndex) {
+            job = jobs[_jobLastIndex];
         }
         for (uint256 i = config.targetPools.length; i > 0; ) {
             unchecked {
@@ -322,41 +320,41 @@ contract Arbiter is IArbiter, BastionConnector, AutomationCompatible {
             config.targetPools.pop();
         }
         jobs.pop();
-        emit JobRemoved(jobIndex);
+        emit JobRemoved(_jobIndex);
     }
 
     function pushPoolToJob(
-        uint256 jobIndex,
-        address _pool,
-        uint256 _type,
-        uint24 _fee
+        uint256 _jobIndex,
+        address _poolAddr,
+        uint256 _poolType,
+        uint24 _poolFee
     ) external onlyGovernor {
-        PoolType _poolType = PoolType(_type);
-        if (routers[_pool] == address(0) && _poolType != PoolType.UniswapV2) {
+        PoolType poolType_ = PoolType(_poolType);
+        if (routers[_poolAddr] == address(0) && poolType_ != PoolType.UniswapV2) {
             revert RouterNotSet();
         }
-        if (quoters[_pool] == address(0) && _poolType != PoolType.UniswapV2) {
+        if (quoters[_poolAddr] == address(0) && poolType_ != PoolType.UniswapV2) {
             revert QuoterNotSet();
         }
-        Pool storage pool = jobsConfig[jobs[jobIndex].flPool].targetPools.push();
-        pool.poolAddr = _pool;
-        pool.poolType = _poolType;
-        pool.poolFee = _fee;
-        emit PoolAddedToJob(jobIndex, _pool, _poolType, _fee);
+        Pool storage _pool = jobsConfig[jobs[_jobIndex].flPool].targetPools.push();
+        _pool.poolAddr = _poolAddr;
+        _pool.poolType = poolType_;
+        _pool.poolFee = _poolFee;
+        emit PoolAddedToJob(_jobIndex, _poolAddr, poolType_, _poolFee);
     }
 
-    function removePoolFromJob(uint256 jobIndex, uint8 poolIndex) external onlyGovernor {
-        ArbiterJob memory _job = jobs[jobIndex];
+    function removePoolFromJob(uint256 _jobIndex, uint8 _poolIndex) external onlyGovernor {
+        ArbiterJob memory _job = jobs[_jobIndex];
         ArbiterJobConfig storage _config = jobsConfig[_job.flPool];
-        uint256 poolsLastIndex = _config.targetPools.length - 1;
-        Pool storage _pool = _config.targetPools[poolIndex];
+        uint256 _poolsLastIndex = _config.targetPools.length - 1;
+        Pool storage _pool = _config.targetPools[_poolIndex];
         delete routers[_pool.poolAddr];
         delete quoters[_pool.poolAddr];
-        if (poolIndex < poolsLastIndex) {
-            _pool = _config.targetPools[poolsLastIndex];
+        if (_poolIndex < _poolsLastIndex) {
+            _pool = _config.targetPools[_poolsLastIndex];
         }
         _config.targetPools.pop();
-        emit PoolRemovedFromJob(jobIndex, poolIndex);
+        emit PoolRemovedFromJob(_jobIndex, _poolIndex);
     }
 
     function computeProfitMaximizingTrade(
@@ -392,128 +390,134 @@ contract Arbiter is IArbiter, BastionConnector, AutomationCompatible {
         _amountOut = uint112(getAmountOutUniswapV2(_amountIn, _reserve0, _reserve1, FL_FEE));
     }
 
-    function getAmountInUniswapV2(
-        uint256 amountOut,
-        uint256 reserveIn,
-        uint256 reserveOut,
-        uint24 poolFee
-    ) internal pure returns (uint256 amountIn) {
-        if (amountOut == 0) revert InsufficentInput();
-        if (reserveIn == 0 || reserveOut == 0) revert InsufficentLiquidity();
-        uint256 numerator = reserveIn * amountOut * 10000;
-        uint256 denominator = reserveOut - amountOut * poolFee;
-        amountIn = (numerator / denominator) + 1;
-    }
-
     function getAmountOutUniswapV2(
-        uint256 amountIn,
-        uint256 reserveIn,
-        uint256 reserveOut,
-        uint24 poolFee
+        uint256 _amountIn,
+        uint256 _reserveIn,
+        uint256 _reserveOut,
+        uint24 _poolFee
     ) internal pure returns (uint256 amountOut) {
-        if (amountIn == 0) revert InsufficentInput();
-        if (reserveIn == 0 || reserveOut == 0) revert InsufficentLiquidity();
-        uint256 amountInWithFee = amountIn * poolFee;
-        uint256 numerator = amountInWithFee * reserveOut;
-        uint256 denominator = (reserveIn * 10000) + amountInWithFee;
-        amountOut = numerator / denominator;
+        if (_amountIn == 0) {
+            revert InsufficentInput();
+        }
+        if (_reserveIn == 0 || _reserveOut == 0){
+            revert InsufficentLiquidity();
+        }
+        uint256 _amountInWithFee = _amountIn * _poolFee;
+        uint256 _numerator = _amountInWithFee * _reserveOut;
+        uint256 _denominator = (_reserveIn * 10000) + _amountInWithFee;
+        amountOut = _numerator / _denominator;
     }
 
     function getAmountOut(
-        uint256 amountIn,
-        bool zeroToOne,
-        address token0,
-        address token1,
-        Pool memory pool
+        uint256 _amountIn,
+        bool _zeroToOne,
+        address _token0,
+        address _token1,
+        Pool memory _pool
     ) internal view returns (uint256 amountOut) {
-        (address tokenIn, address tokenOut) = zeroToOne ? (token0, token1) : (token1, token0);
-        if (pool.poolType == PoolType.UniswapV2) {
-            (uint256 reserve0, uint256 reserve1, ) = IFlashLiquidityPair(pool.poolAddr)
+        (address _tokenIn, address _tokenOut) = _zeroToOne ? (_token0, _token1) : (_token1, _token0);
+        if (_pool.poolType == PoolType.UniswapV2) {
+            (uint256 _reserve0, uint256 _reserve1, ) = IFlashLiquidityPair(_pool.poolAddr)
                 .getReserves();
-            (reserve0, reserve1) = zeroToOne ? (reserve0, reserve1) : (reserve1, reserve0);
-            amountOut = getAmountOutUniswapV2(amountIn, reserve0, reserve1, pool.poolFee);
-        } else if (pool.poolType == PoolType.UniswapV3 || pool.poolType == PoolType.KyberSwap) {
+            (_reserve0, _reserve1) = _zeroToOne ? (_reserve0, _reserve1) : (_reserve1, _reserve0);
+            amountOut = getAmountOutUniswapV2(_amountIn, _reserve0, _reserve1, _pool.poolFee);
+        } else if (_pool.poolType == PoolType.UniswapV3 || _pool.poolType == PoolType.KyberSwap) {
             IUniswapV3Quoter.QuoteExactInputSingleParams memory params = IUniswapV3Quoter
-                .QuoteExactInputSingleParams(tokenIn, tokenOut, amountIn, pool.poolFee, 0);
-            amountOut = IUniswapV3Quoter(quoters[pool.poolAddr]).quoteExactInputSingle(params);
-        } else if (pool.poolType == PoolType.Algebra) {
+                .QuoteExactInputSingleParams(_tokenIn, _tokenOut, _amountIn, _pool.poolFee, 0);
+            amountOut = IUniswapV3Quoter(quoters[_pool.poolAddr]).quoteExactInputSingle(params);
+        } else if (_pool.poolType == PoolType.Algebra) {
             IAlgebraQuoter.QuoteExactInputSingleParams memory params = IAlgebraQuoter
-                .QuoteExactInputSingleParams(tokenIn, tokenOut, amountIn, 0);
-            amountOut = IAlgebraQuoter(quoters[pool.poolAddr]).quoteExactInputSingle(params);
+                .QuoteExactInputSingleParams(_tokenIn, _tokenOut, _amountIn, 0);
+            amountOut = IAlgebraQuoter(quoters[_pool.poolAddr]).quoteExactInputSingle(params);
         }
     }
 
     function flashLiquidityCall(
-        address sender,
-        uint256 amount0,
-        uint256 amount1,
-        bytes memory data
+        address _sender,
+        uint256 _amount0,
+        uint256 _amount1,
+        bytes memory _data
     ) public {
-        if (msg.sender != permissionedPairAddress) revert NotPermissioned();
-        if (sender != address(this)) revert NotAuthorized();
-        CallbackData memory info = abi.decode(data, (CallbackData));
-        (address tokenIn, address tokenOut) = info.zeroToOne
-            ? (info.token0, info.token1)
-            : (info.token1, info.token0);
-        if (info.targetPool.poolType == PoolType.UniswapV2) {
-            (uint256 amount0Out, uint256 amount1Out) = info.zeroToOne
-                ? (uint112(0), info.amountOutExt)
-                : (info.amountOutExt, uint112(0));
-            IERC20(tokenIn).safeTransfer(info.targetPool.poolAddr, amount0 > 0 ? amount0 : amount1);
-            IFlashLiquidityPair(info.targetPool.poolAddr).swap(
-                amount0Out,
-                amount1Out,
+        if (msg.sender != permissionedPairAddress) {
+            revert NotPermissioned();
+        }
+        if (_sender != address(this)) {
+            revert NotAuthorized();
+        }
+        CallbackData memory _info = abi.decode(_data, (CallbackData));
+        (address _tokenIn, address _tokenOut) = _info.zeroToOne
+            ? (_info.token0, _info.token1)
+            : (_info.token1, _info.token0);
+        if (_info.targetPool.poolType == PoolType.UniswapV2) {
+            uint256 _amount0Out = getAmountOut(
+                _info.zeroToOne ? _amount0 : _amount1, 
+                _info.zeroToOne, 
+                _info.token0, 
+                _info.token1, 
+                _info.targetPool
+            );
+            uint256 _amount1Out;
+            (_amount0Out, _amount1Out) = _info.zeroToOne
+                ? (uint256(0), _amount0Out)
+                : (_amount0Out, uint256(0));
+            IERC20(_tokenIn).safeTransfer(
+                _info.targetPool.poolAddr, 
+                _info.zeroToOne ? _amount0 : _amount1
+            );
+            IFlashLiquidityPair(_info.targetPool.poolAddr).swap(
+                _amount0Out,
+                _amount1Out,
                 address(this),
                 new bytes(0)
             );
-        } else if (info.targetPool.poolType == PoolType.UniswapV3) {
-            address _router = routers[info.targetPool.poolAddr];
-            IERC20(tokenIn).approve(_router, amount0 > 0 ? amount0 : amount1);
+        } else if (_info.targetPool.poolType == PoolType.UniswapV3) {
+            address _router = routers[_info.targetPool.poolAddr];
+            IERC20(_tokenIn).approve(_router, _amount0 > 0 ? _amount0 : _amount1);
             IUniswapV3Router.ExactInputSingleParams memory params = IUniswapV3Router
                 .ExactInputSingleParams(
-                    tokenIn,
-                    tokenOut,
-                    info.targetPool.poolFee,
+                    _tokenIn,
+                    _tokenOut,
+                    _info.targetPool.poolFee,
                     address(this),
                     block.timestamp,
-                    amount0 > 0 ? amount0 : amount1,
-                    info.amountOutExt,
+                    _info.zeroToOne ? _amount0 : _amount1,
+                    0,
                     0
                 );
             IUniswapV3Router(_router).exactInputSingle(params);
-        } else if (info.targetPool.poolType == PoolType.Algebra) {
-            address _router = routers[info.targetPool.poolAddr];
-            IERC20(tokenIn).approve(_router, amount0 > 0 ? amount0 : amount1);
+        } else if (_info.targetPool.poolType == PoolType.Algebra) {
+            address _router = routers[_info.targetPool.poolAddr];
+            IERC20(_tokenIn).approve(_router, _amount0 > 0 ? _amount0 : _amount1);
             IAlgebraRouter.ExactInputSingleParams memory params = IAlgebraRouter
                 .ExactInputSingleParams(
-                    tokenIn,
-                    tokenOut,
+                    _tokenIn,
+                    _tokenOut,
                     address(this),
                     block.timestamp,
-                    amount0 > 0 ? amount0 : amount1,
-                    info.amountOutExt,
+                    _info.zeroToOne ? _amount0 : _amount1,
+                    0,
                     0
                 );
             IAlgebraRouter(_router).exactInputSingle(params);
-        } else if (info.targetPool.poolType == PoolType.KyberSwap) {
-            address _router = routers[info.targetPool.poolAddr];
-            IERC20(tokenIn).approve(_router, amount0 > 0 ? amount0 : amount1);
+        } else if (_info.targetPool.poolType == PoolType.KyberSwap) {
+            address _router = routers[_info.targetPool.poolAddr];
+            IERC20(_tokenIn).approve(_router, _amount0 > 0 ? _amount0 : _amount1);
             IKyberswapRouter.ExactInputSingleParams memory params = IKyberswapRouter
                 .ExactInputSingleParams(
-                    tokenIn,
-                    tokenOut,
-                    info.targetPool.poolFee,
+                    _tokenIn,
+                    _tokenOut,
+                    _info.targetPool.poolFee,
                     address(this),
                     block.timestamp,
-                    amount0 > 0 ? amount0 : amount1,
-                    info.amountOutExt,
+                    _info.zeroToOne ? _amount0 : _amount1,
+                    0,
                     0
                 );
             IKyberswapRouter(_router).swapExactInputSingle(params);
         } else {
             revert UnknownPoolType();
         }
-        IERC20(tokenOut).safeTransfer(info.flPool, info.amountDebt);
+        IERC20(_tokenOut).safeTransfer(_info.flPool, _info.amountDebt);
     }
 
     function _withdraw(address _farm, uint256 _balance, IERC20 _token) internal {
@@ -527,27 +531,26 @@ contract Arbiter is IArbiter, BastionConnector, AutomationCompatible {
     }
 
     function _findBestPool(
-        bool zeroToOne,
-        uint256 amountInFlash,
-        uint256 amountOutFlash,
-        ArbiterJob memory job,
-        ArbiterJobConfig memory config
-    ) internal view returns (uint32 bestPoolIndex, uint256 bestProfit, uint256 amountOutExt) {
-        uint256 tempProfit;
-        uint256 amountOutExtTemp;
-        for (uint32 i = 0; i < config.targetPools.length; ) {
-            amountOutExtTemp = getAmountOut(
-                amountOutFlash,
-                !zeroToOne,
-                job.token0,
-                job.token1,
-                config.targetPools[i]
+        bool _zeroToOne,
+        uint256 _amountInFlash,
+        uint256 _amountOutFlash,
+        ArbiterJob memory _job,
+        ArbiterJobConfig memory _config
+    ) internal view returns (uint32 _bestPoolIndex, uint256 _bestProfit) {
+        uint256 _tempProfit;
+        uint256 _amountOutExt;
+        for (uint32 i = 0; i < _config.targetPools.length; ) {
+            _amountOutExt = getAmountOut(
+                _amountOutFlash,
+                !_zeroToOne,
+                _job.token0,
+                _job.token1,
+                _config.targetPools[i]
             );
-            tempProfit = amountOutExtTemp > amountInFlash ? amountOutExtTemp - amountInFlash : 0;
-            if (tempProfit > bestProfit) {
-                bestPoolIndex = i;
-                bestProfit = tempProfit;
-                amountOutExt = amountOutExtTemp;
+            _tempProfit = _amountOutExt > _amountInFlash ? _amountOutExt - _amountInFlash : 0;
+            if (_tempProfit > _bestProfit) {
+                _bestPoolIndex = i;
+                _bestProfit = _tempProfit;
             }
             unchecked {
                 i++;
@@ -572,51 +575,49 @@ contract Arbiter is IArbiter, BastionConnector, AutomationCompatible {
     }
 
     function checkUpkeep(
-        bytes calldata checkData
+        bytes calldata _checkData
     ) external view override returns (bool upkeepNeeded, bytes memory performData) {
-        uint256 _jobIndex = abi.decode(checkData, (uint256));
-        ArbiterJob memory job = jobs[_jobIndex];
-        ArbiterJobConfig memory config = jobsConfig[job.flPool];
-        (uint256 _price0, uint256 _price1) = _getPrices(job.token0, job.token1);
+        uint256 _jobIndex = abi.decode(_checkData, (uint256));
+        ArbiterJob memory _job = jobs[_jobIndex];
+        ArbiterJobConfig memory _config = jobsConfig[_job.flPool];
+        (uint256 _price0, uint256 _price1) = _getPrices(_job.token0, _job.token1);
         (
             bool _zeroToOne,
             uint256 _amountInFlash,
             uint256 _amountOutFlash,
             uint256 _minProfit
         ) = computeProfitMaximizingTrade(
-                job.flPool,
-                config.reserveToProfitRatio,
+                _job.flPool,
+                _config.reserveToProfitRatio,
                 _price0,
                 _price1,
-                config.token0Decimals,
-                config.token1Decimals
+                _config.token0Decimals,
+                _config.token1Decimals
             );
         if (_amountInFlash == 0) return (false, new bytes(0));
-        (uint32 _bestPoolIndex, uint256 _bestProfit, uint256 _amountOutExt) = _findBestPool(
+        (uint32 _bestPoolIndex, uint256 _bestProfit) = _findBestPool(
             _zeroToOne,
             _amountInFlash,
             _amountOutFlash,
-            job,
-            config
+            _job,
+            _config
         );
-        _bestProfit -= _bestProfit / config.adjFactor;
+        _bestProfit -= _bestProfit / _config.adjFactor;
         if (_bestProfit > _minProfit) {
             ArbiterCall memory _arbiterCall = ArbiterCall(
                 uint32(_jobIndex),
-                uint112(_amountInFlash),
-                uint112(_amountOutFlash),
+                _amountInFlash,
+                _amountOutFlash,
                 _bestPoolIndex,
-                uint112(_amountOutExt),
-                job.token0IsRewardToken == _zeroToOne,
+                _job.token0IsRewardToken == _zeroToOne,
                 _zeroToOne
             );
-            upkeepNeeded = true;
-            performData = abi.encode(_arbiterCall);
+            return(true, abi.encode(_arbiterCall));
         }
     }
 
-    function performUpkeep(bytes calldata performData) external override {
-        ArbiterCall memory _call = abi.decode(performData, (ArbiterCall));
+    function performUpkeep(bytes calldata _performData) external override {
+        ArbiterCall memory _call = abi.decode(_performData, (ArbiterCall));
         ArbiterJob memory _job = jobs[_call.jobIndex];
         CallbackData memory _callbackData = CallbackData(
             _job.flPool,
@@ -624,7 +625,6 @@ contract Arbiter is IArbiter, BastionConnector, AutomationCompatible {
             _job.token0,
             _job.token1,
             _call.amountInFlash,
-            _call.amountOutExt,
             !_call.zeroToOne
         );
         permissionedPairAddress = _job.flPool;
@@ -632,8 +632,8 @@ contract Arbiter is IArbiter, BastionConnector, AutomationCompatible {
             ? (IERC20(_job.token0), IERC20(_job.token1))
             : (IERC20(_job.token1), IERC20(_job.token0));
         (uint256 _amount0Flash, uint256 _amount1Flash) = _call.zeroToOne
-            ? (uint112(0), _call.amountOutFlash)
-            : (_call.amountOutFlash, uint112(0));
+            ? (uint256(0), _call.amountOutFlash)
+            : (_call.amountOutFlash, uint256(0));
         uint256 _balanceBefore = _tokenIn.balanceOf(address(this));
         IFlashLiquidityPair _flPool = IFlashLiquidityPair(_job.flPool);
         (uint256 _reserve0, uint256 _reserve1, ) = _flPool.getReserves();
@@ -646,7 +646,7 @@ contract Arbiter is IArbiter, BastionConnector, AutomationCompatible {
             revert NotProfitable();
         }
         if (!_call.tokenInIsRewardToken) {
-            uint256 _balance = _tokenIn.balanceOf(address(this));
+            uint256 _balance = _profit + _balanceBefore;
             (_reserve0, _reserve1, ) = _flPool.getReserves();
             (_reserve0, _reserve1) = _call.zeroToOne
                 ? (_reserve0, _reserve1)

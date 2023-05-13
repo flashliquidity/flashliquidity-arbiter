@@ -15,7 +15,7 @@ describe("UpkeepsStation", function () {
         this.transferGovernanceDelay = 60
         this.toUpkeepAmount = ethers.utils.parseUnits("1.0", 18)
         this.createUpkeepAmount = ethers.utils.parseUnits("5.0", 18)
-        this.UpkeepsStation = await ethers.getContractFactory("UpkeepsStationV2")
+        this.UpkeepsStation = await ethers.getContractFactory("UpkeepsStationV3")
     })
 
     beforeEach(async function () {
@@ -35,7 +35,7 @@ describe("UpkeepsStation", function () {
 
     it("Should allow only Governor to request governance transfer", async function () {
         await expect(this.station.connect(this.bob).setPendingGovernor(this.bob.address)).to.be
-            .reverted
+            .revertedWith("NotAuthorized()")
         expect(await this.station.pendingGovernor()).to.not.be.equal(this.bob.address)
         await this.station.connect(this.governor).setPendingGovernor(this.bob.address)
         expect(await this.station.pendingGovernor()).to.be.equal(this.bob.address)
@@ -58,7 +58,34 @@ describe("UpkeepsStation", function () {
 
     it("Should allow only Governor to call initialize", async function () {
         await expect(
-            this.station.connect(this.bob).initialize(this.arbiter.address, this.createUpkeepAmount)
-        ).to.be.reverted
+            this.station.connect(this.bob).initialize(this.createUpkeepAmount)
+        ).revertedWith("NotAuthorized()")
+    })
+
+    it("Should allow only Governor to set minUpkeepBalance", async function () {
+        await expect(
+            this.station.connect(this.bob).setMinUpkeepBalance("2000000000000000000")
+        ).revertedWith("NotAuthorized()")
+        expect(await this.station.minUpkeepBalance()).to.not.be.equal("2000000000000000000")
+        await this.station.connect(this.governor).setMinUpkeepBalance("2000000000000000000")
+        expect(await this.station.minUpkeepBalance()).to.be.equal("2000000000000000000")
+    })
+
+    it("Should allow only Governor to set toUpkeepAmount", async function () {
+        await expect(
+            this.station.connect(this.bob).setToUpkeepAmount("1000000000000000000")
+        ).revertedWith("NotAuthorized()")
+        expect(await this.station.toUpkeepAmount()).to.not.be.equal("1000000000000000000")
+        await this.station.connect(this.governor).setToUpkeepAmount("1000000000000000000")
+        expect(await this.station.toUpkeepAmount()).to.be.equal("1000000000000000000")
+    })
+
+    it("Should allow only Governor to set minDelayNextRefuel", async function () {
+        await expect(
+            this.station.connect(this.bob).setToUpkeepAmount("1000000000000000000")
+        ).revertedWith("NotAuthorized()")
+        expect(await this.station.toUpkeepAmount()).to.not.be.equal("1000000000000000000")
+        await this.station.connect(this.governor).setToUpkeepAmount("1000000000000000000")
+        expect(await this.station.toUpkeepAmount()).to.be.equal("1000000000000000000")
     })
 })

@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.0;
 
-interface IUpkeepsStationV2 {
+interface IUpkeepsStationV3 {
     error OutOfBound();
     error RefuelNotNeeded();
     error InvalidPerformData();
@@ -22,9 +22,19 @@ interface IUpkeepsStationV2 {
 
     function withdrawStationUpkeep() external;
 
-    function addUpkeep(uint96 _amount) external;
+    function addArbiterUpkeep(uint96 _amount) external;
 
-    function removeUpkeep() external;
+    function addUpkeep(
+        string calldata _name,
+        address _target,
+        uint32 _gasLimit,
+        bytes calldata _checkData,
+        uint96 _amount
+    ) external;
+
+    function removeArbiterUpkeep() external;
+
+    function removeUpkeep(uint256 _index) external;
 
     function withdrawCanceledUpkeeps(uint256 _upkeepsNumber) external;
 }
