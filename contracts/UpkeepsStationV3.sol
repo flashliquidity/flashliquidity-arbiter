@@ -86,14 +86,10 @@ contract UpkeepsStationV3 is
         );
     }
 
-    function doesUpkeepNeedFunds(
-        uint256 _index, 
-        bool _isArbiterUpkeep
-    ) private view returns (bool) {
-        UpkeepData memory _upkeep = _isArbiterUpkeep ? arbiterUpkeeps[_index] : otherUpkeeps[_index];
+    function doesUpkeepNeedFunds(UpkeepData memory _upkeep) private view returns (bool) {
         if (block.timestamp - _upkeep.lastTimestamp > minDelayNextRefuel) {
             (, , , uint96 _balance, , , , ) = iRegistry.getUpkeep(_upkeep.id);
-            if (_balance <= minUpkeepBalance) return true;
+            if (_balance < minUpkeepBalance) return true;
         }
         return false;
     }
@@ -101,7 +97,7 @@ contract UpkeepsStationV3 is
     function addArbiterUpkeep(uint96 _amount) external onlyGovernor {
         uint256 _lastIndex = arbiterUpkeeps.length;
         uint256 _newUpkeepId = registerUpkeep(
-            string.concat("Arbiter", Strings.toString(_lastIndex)),
+            string.concat("Arbiter: ", Strings.toString(_lastIndex)),
             arbiter,
             1000000,
             address(this),
@@ -180,9 +176,11 @@ contract UpkeepsStationV3 is
         if (_stationBalance <= minUpkeepBalance) {
             return(true, abi.encode(uint32(0), uint256(0)));
         } else {
+            UpkeepData memory _upkeep;
             uint256 _upkeepsLength = arbiterUpkeeps.length;
-            for (uint256 i = 0; i < _upkeepsLength; ) {
-                if (doesUpkeepNeedFunds(i, true)) {
+            for (uint256 i; i < _upkeepsLength; ) {
+                _upkeep = arbiterUpkeeps[i];
+                if (doesUpkeepNeedFunds(_upkeep)) {
                     return (true, abi.encode(uint32(1), i));
                 }
                 unchecked {
@@ -190,8 +188,9 @@ contract UpkeepsStationV3 is
                 }
             }
             _upkeepsLength = otherUpkeeps.length;
-            for (uint256 i = 0; i < _upkeepsLength; ) {
-                if (doesUpkeepNeedFunds(i, false)) {
+            for (uint256 i; i < _upkeepsLength; ) {
+                _upkeep = otherUpkeeps[i];
+                if (doesUpkeepNeedFunds(_upkeep)) {
                     return (true, abi.encode(uint32(2), i));
                 }
                 unchecked {
@@ -214,12 +213,12 @@ contract UpkeepsStationV3 is
             iLink.approve(address(_iRegistry), _amount);
             _iRegistry.addFunds(_stationUpkeepId, uint96(_amount));
         } else if (_mode == 1 || _mode == 2) {
-            uint256 _upkeepId = _mode == 1 ? arbiterUpkeeps[_upkeepIndex].id : otherUpkeeps[_upkeepIndex].id;
-            if (!doesUpkeepNeedFunds(_upkeepId, _mode == 1)) {
+            UpkeepData memory _upkeep = _mode == 1 ? arbiterUpkeeps[_upkeepIndex] : otherUpkeeps[_upkeepIndex];
+            if (!doesUpkeepNeedFunds(_upkeep)) {
                 revert RefuelNotNeeded();
             }
             iLink.approve(address(_iRegistry), _amount);
-            _iRegistry.addFunds(_upkeepId, uint96(_amount));
+            _iRegistry.addFunds(_upkeep.id, uint96(_amount));
         } else {
             revert InvalidPerformData();
         }
