@@ -1,20 +1,48 @@
 # FlashLiquidity Arbiter
 
-This repository includes the smart contracts of FlashLiquidity arbitrage automation V2 (self-balancing pools).
+Arbitrage bot designed for performing rebalancing operations and distributing profits to liquidity providers in FlashLiquidity self-balancing pools.
 
-# Addresses and Verified Source Code:
+## Requirements
 
-- Arbiter: https://polygonscan.com/address/0x33aF6444b665A39dFa338dfCCe07BF1022F73916
-- UpkeepsStationV3: https://polygonscan.com/address/0xE4C0731f38366C7f59A846Db4cFe34775706cCF9
+- [foundry](https://book.getfoundry.sh/getting-started/installation)
 
 ## Install Dependencies
 
-`yarn`
+`yarn setup`
 
 ## Compile Contracts
 
 `yarn compile`
 
-## Run Tests
+## Run Full Test Suite
 
 `yarn test`
+
+## Run Unit Tests
+
+`yarn unit-test`
+
+## Run Integration Tests
+
+`yarn integration-test`
+
+## Run Fuzz Tests
+
+`yarn fuzz-test`
+
+## Run Invariant Tests
+
+`yarn invariant-test`
+
+## Run Coverage
+
+`yarn coverage`
+
+## Gas Report
+
+`yarn gas-report`
+
+## Run Slither
+
+`yarn slither`
+

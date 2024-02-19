@@ -5,11 +5,16 @@
 # hardhat
 artifacts
 cache
+scripts
 deployments
 node_modules
 coverage
 coverage.json
 typechain
+
+#foundry
+foundry-cache
+out
 
 # don't push the environment vars!
 .env
@@ -99,7 +104,6 @@ lint/outputs/
 lint/tmp/
 # lint/reports/
 
-gas-report.txt
 .openzeppelin
 .notes.md
 .article.md
