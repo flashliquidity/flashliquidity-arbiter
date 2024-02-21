@@ -12,7 +12,6 @@ import {IFlashLiquidityFactory} from "../../../contracts/interfaces/IFlashLiquid
 import {ArbiterHelpers} from "../../helpers/ArbiterHelpers.sol";
 import {UniswapV2Adapter} from "../../../contracts/adapters/UniswapV2Adapter.sol";
 import {UniswapV3Adapter} from "../../../contracts/adapters/UniswapV3Adapter.sol";
-import "forge-std/console.sol";
 
 contract ArbiterIntegrationTest is Test, ArbiterHelpers {
     Arbiter arbiter;
