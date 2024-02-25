@@ -15,6 +15,7 @@ typechain
 #foundry
 foundry-cache
 out
+lcov.info
 
 # don't push the environment vars!
 .env

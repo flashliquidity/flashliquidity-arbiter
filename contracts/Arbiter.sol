@@ -360,11 +360,12 @@ contract Arbiter is IArbiter, AutomationCompatibleInterface, StreamsLookupCompat
     // Private View Functions  //
     /////////////////////////////
 
+
     /**
      * @dev Calculates the necessary trade information for rebalancing a given self-balancing pool based on the prices of token0 and token1.
      * @param selfBalancingPool The address of the self-balancing pool for which the rebalancing trade needs to be computed.
-     * @param price0 The price of token0.
-     * @param price1 The price of token1.
+     * @param price0 The price of token0 in USD.
+     * @param price1 The price of token1 in USD.
      * @param token0Decimals The number of decimals of token0.
      * @param token1Decimals The number of decimals of token1.
      * @return tradeInfo A struct containing the information for the rebalancing trade, including amounts to trade in and out.
@@ -379,8 +380,8 @@ contract Arbiter is IArbiter, AutomationCompatibleInterface, StreamsLookupCompat
         uint8 token1Decimals
     ) private view returns (RebalancingInfo memory tradeInfo) {
         (uint256 rateTokenIn, uint256 rateTokenOut) = price0 < price1
-            ? (10 ** uint256(token0Decimals), (price0 * (10 ** uint256(token1Decimals))) / price1)
-            : ((price1 * (10 ** uint256(token0Decimals))) / price0, 10 ** uint256(token1Decimals));
+            ? (10 ** token0Decimals, FullMath.mulDiv(price0, 10 ** token1Decimals, price1))
+            : (FullMath.mulDiv(price1, 10 ** token0Decimals, price0), 10 ** token1Decimals);
         (uint256 reserveIn, uint256 reserveOut,) = IFlashLiquidityPair(selfBalancingPool).getReserves();
         tradeInfo.zeroToOne = FullMath.mulDiv(reserveIn, rateTokenOut, reserveOut) < rateTokenIn;
         if (!tradeInfo.zeroToOne) {

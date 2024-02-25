@@ -82,8 +82,8 @@ contract ArbiterTest is Test, ArbiterHelpers {
         string[] memory feedIDs = new string[](2);
         tokens[0] = address(linkToken);
         tokens[1] = alice;
-        feedIDs[0] = "wannacry?";
-        feedIDs[1] = "wannadie?";
+        feedIDs[0] = "feedID0";
+        feedIDs[1] = "feedID1";
         vm.expectRevert(Governable.Governable__NotAuthorized.selector);
         arbiter.setDataStreams(tokens, feedIDs);
         assertFalse(
