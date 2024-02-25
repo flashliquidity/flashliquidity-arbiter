@@ -1,6 +1,6 @@
 # FlashLiquidity Arbiter
 
-Arbitrage bot designed for performing rebalancing operations and distributing profits to liquidity providers in FlashLiquidity self-balancing pools.
+Arbitrage bot designed to perform rebalancing operations and profits distribution to liquidity providers in FlashLiquidity self-balancing pools.
 
 ## Requirements
 
