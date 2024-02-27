@@ -66,6 +66,7 @@ abstract contract DexAdapter is IDexAdapter {
         view
         returns (uint256 maxOutput, bytes memory extraArgs)
     {
+        if (tokenIn == tokenOut || amountIn == 0) return (0, new bytes(0));
         (maxOutput, extraArgs) = _getMaxOutput(tokenIn, tokenOut, amountIn);
     }
 }
