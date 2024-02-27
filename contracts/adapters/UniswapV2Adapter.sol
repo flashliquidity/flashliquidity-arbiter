@@ -165,7 +165,7 @@ contract UniswapV2Adapter is DexAdapter, Governable {
     }
 
     /// @return factoriesLength The number of factories currently registered
-    function allFactoriesLength() external view returns(uint256) {
+    function allFactoriesLength() external view returns (uint256) {
         return s_factories.length;
     }
 }

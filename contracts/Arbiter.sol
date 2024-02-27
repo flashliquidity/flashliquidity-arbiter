@@ -2,9 +2,11 @@
 
 pragma solidity 0.8.19;
 
-import {AutomationCompatibleInterface} from "@chainlink/contracts/src/v0.8/automation/interfaces/AutomationCompatibleInterface.sol";
+import {AutomationCompatibleInterface} from
+    "@chainlink/contracts/src/v0.8/automation/interfaces/AutomationCompatibleInterface.sol";
 import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
-import {StreamsLookupCompatibleInterface} from "@chainlink/contracts/src/v0.8/automation/interfaces/StreamsLookupCompatibleInterface.sol";
+import {StreamsLookupCompatibleInterface} from
+    "@chainlink/contracts/src/v0.8/automation/interfaces/StreamsLookupCompatibleInterface.sol";
 import {IERC20, IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Babylonian} from "./libraries/Babylonian.sol";
@@ -134,7 +136,9 @@ contract Arbiter is IArbiter, AutomationCompatibleInterface, StreamsLookupCompat
     // Functions          //
     ////////////////////////
 
-    constructor(address governor, address verifierProxy, address linkToken, uint32 priceMaxStaleness) Governable(governor) {
+    constructor(address governor, address verifierProxy, address linkToken, uint32 priceMaxStaleness)
+        Governable(governor)
+    {
         _setVerifierProxy(verifierProxy);
         _setPriceMaxStaleness(priceMaxStaleness);
         i_linkToken = linkToken;
@@ -233,8 +237,8 @@ contract Arbiter is IArbiter, AutomationCompatibleInterface, StreamsLookupCompat
     /// @inheritdoc IArbiter
     function recoverERC20(address to, address[] memory tokens, uint256[] memory amounts) external onlyGovernor {
         uint256 tokensLen = tokens.length;
-        if(tokensLen != amounts.length) revert Arbiter__InconsistentParamsLength();
-        for(uint256 i; i < tokensLen;) {
+        if (tokensLen != amounts.length) revert Arbiter__InconsistentParamsLength();
+        for (uint256 i; i < tokensLen;) {
             IERC20(tokens[i]).safeTransfer(to, amounts[i]);
             unchecked {
                 ++i;
@@ -359,7 +363,6 @@ contract Arbiter is IArbiter, AutomationCompatibleInterface, StreamsLookupCompat
     /////////////////////////////
     // Private View Functions  //
     /////////////////////////////
-
 
     /**
      * @dev Calculates the necessary trade information for rebalancing a given self-balancing pool based on the prices of token0 and token1.
@@ -584,7 +587,11 @@ contract Arbiter is IArbiter, AutomationCompatibleInterface, StreamsLookupCompat
     }
 
     /// @inheritdoc IArbiter
-    function getJobConfig(address selfBalancingPool) external view returns (address, uint96, address, address, uint8, uint8) {
+    function getJobConfig(address selfBalancingPool)
+        external
+        view
+        returns (address, uint96, address, address, uint8, uint8)
+    {
         ArbiterJobConfig memory jobConfig = s_jobConfig[selfBalancingPool];
         return (
             jobConfig.rewardVault,

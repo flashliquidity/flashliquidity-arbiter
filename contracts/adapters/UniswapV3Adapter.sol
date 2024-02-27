@@ -252,7 +252,7 @@ contract UniswapV3Adapter is DexAdapter, Governable, IUniswapV3SwapCallback {
     }
 
     /// @return factoriesLength The number of factories currently registered
-    function allFactoriesLength() external view returns(uint256) {
+    function allFactoriesLength() external view returns (uint256) {
         return s_factories.length;
     }
 }

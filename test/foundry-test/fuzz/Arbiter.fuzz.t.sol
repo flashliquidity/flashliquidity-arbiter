@@ -32,7 +32,10 @@ contract ArbiterFuzzTest is Test, ArbiterHelpers {
         arbiter.pushDexAdapter(adapter);
     }
 
-    function testFuzz__Arbiter_gettersCantRevert(address token, address selfBalancingPool, uint256 adapterIndex) public view {
+    function testFuzz__Arbiter_gettersCantRevert(address token, address selfBalancingPool, uint256 adapterIndex)
+        public
+        view
+    {
         adapterIndex = bound(adapterIndex, 0, arbiter.allAdaptersLength() - 1);
         arbiter.getDataFeed(token);
         arbiter.getDataStream(token);

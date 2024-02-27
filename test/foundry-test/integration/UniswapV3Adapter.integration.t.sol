@@ -36,7 +36,7 @@ contract UniswapV3IntegrationAdapterTest is Test {
     function testIntegration__UniswapV3Adapter_swap() public {
         (uint256 maxOutput, bytes memory extraArgs) = adapter.getMaxOutput(address(WETH), USDC, 1 ether);
         assertFalse(ERC20(USDC).balanceOf(msg.sender) > 0);
-        WETH.deposit{value : 1 ether}();
+        WETH.deposit{value: 1 ether}();
         ERC20(address(WETH)).approve(address(adapter), 1 ether);
         adapter.swap(address(WETH), USDC, msg.sender, 1 ether, maxOutput, extraArgs);
         assertTrue(ERC20(USDC).balanceOf(msg.sender) == maxOutput);

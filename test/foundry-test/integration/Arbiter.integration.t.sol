@@ -58,7 +58,7 @@ contract ArbiterIntegrationTest is Test, ArbiterHelpers {
 
     function testIntegration__Arbiter_performUpkeep() public {
         (bool upkeepNeeded, bytes memory performData) = arbiter.checkUpkeep(abi.encode(flEthUsdc));
-        if(!upkeepNeeded) {
+        if (!upkeepNeeded) {
             /// swap until rebalancing is needed
             address[] memory path = new address[](2);
             path[0] = ETH;

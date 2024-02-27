@@ -80,7 +80,7 @@ interface IArbiter {
      * @param to The address to which the recovered tokens will be sent.
      * @param tokens An array of ERC20 token addresses that are to be recovered.
      * @param amounts An array of amounts for each token to be recovered. The array index corresponds to the token address in the 'tokens' array.
-     * @notice This function is typically used in cases where tokens are accidentally sent to the contract or for withdrawing excess tokens. 
+     * @notice This function is typically used in cases where tokens are accidentally sent to the contract or for withdrawing excess tokens.
      */
     function recoverERC20(address to, address[] memory tokens, uint256[] memory amounts) external;
 

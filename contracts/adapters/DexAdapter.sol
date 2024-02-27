@@ -7,6 +7,7 @@ import {IDexAdapter} from "../interfaces/IDexAdapter.sol";
  * @title DexAdapter
  * @author Oddcod3 (@oddcod3)
  */
+
 abstract contract DexAdapter is IDexAdapter {
     /// @dev Adapter description and version
     string public s_description;
