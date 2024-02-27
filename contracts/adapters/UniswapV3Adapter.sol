@@ -24,6 +24,7 @@ contract UniswapV3Adapter is DexAdapter, Governable, IUniswapV3SwapCallback {
     error UniswapV3Adapter__NotAuthorizedPool();
     error UniswapV3Adapter__InvalidPool();
     error UniswapV3Adapter__InvalidAmountDeltas();
+    error UniswapV3Adapter__InsufficentOutput();
 
     struct UniswapV3FactoryData {
         bool isRegistered;
@@ -139,10 +140,14 @@ contract UniswapV3Adapter is DexAdapter, Governable, IUniswapV3SwapCallback {
     }
 
     /// @inheritdoc DexAdapter
-    function _swap(address tokenIn, address tokenOut, address to, uint256 amountIn, uint256, bytes memory extraArgs)
-        internal
-        override
-    {
+    function _swap(
+        address tokenIn,
+        address tokenOut,
+        address to,
+        uint256 amountIn,
+        uint256 amountOut,
+        bytes memory extraArgs
+    ) internal override {
         (address factory, uint24 fee) = abi.decode(extraArgs, (address, uint24));
         if (!s_factoryData[factory].isRegistered) revert UniswapV3Adapter__NotRegisteredFactory();
         bool zeroToOne = tokenIn < tokenOut;
@@ -150,13 +155,18 @@ contract UniswapV3Adapter is DexAdapter, Governable, IUniswapV3SwapCallback {
         if (targetPool == address(0)) revert UniswapV3Adapter__InvalidPool();
         SwapCallbackData memory callbackData =
             SwapCallbackData({sender: msg.sender, tokenIn: tokenIn, tokenOut: tokenOut, factory: factory, fee: fee});
-        IUniswapV3Pool(targetPool).swap(
+        (int256 amount0Delta, int256 amount1Delta) = IUniswapV3Pool(targetPool).swap(
             to,
             zeroToOne,
             int256(amountIn),
             zeroToOne ? MIN_SQRT_RATIO + 1 : MAX_SQRT_RATIO - 1,
             abi.encode(callbackData)
         );
+        if (zeroToOne && uint256(-amount1Delta) < amountOut) {
+            revert UniswapV3Adapter__InsufficentOutput();
+        } else if (!zeroToOne && uint256(-amount0Delta) < amountOut) {
+            revert UniswapV3Adapter__InsufficentOutput();
+        }
     }
 
     /// @inheritdoc DexAdapter
