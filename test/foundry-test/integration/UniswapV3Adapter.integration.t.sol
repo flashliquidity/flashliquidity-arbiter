@@ -9,7 +9,7 @@ import {Governable} from "flashliquidity-acs/contracts/Governable.sol";
 import {IWETH} from "@uniswap/v2-periphery/contracts/interfaces/IWETH.sol";
 import {ERC20} from "../../mocks/ERC20Mock.sol";
 
-contract UniswapV3IntegrationAdapterTest is Test {
+contract UniswapV3AdapterIntegrationTest is Test {
     UniswapV3Adapter adapter;
     uint256 arbitrumFork;
     address governor = makeAddr("governor");
