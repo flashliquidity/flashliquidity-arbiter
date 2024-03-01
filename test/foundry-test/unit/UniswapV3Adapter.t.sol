@@ -8,15 +8,15 @@ import {UniswapV3Adapter} from "../../../contracts/adapters/UniswapV3Adapter.sol
 import {Governable} from "flashliquidity-acs/contracts/Governable.sol";
 
 contract UniswapV3AdapterTest is Test {
-    UniswapV3Adapter public adapter;
-    address public governor = makeAddr("governor");
-    address public bob = makeAddr("bob");
-    address public alice = makeAddr("alice");
-    address public rob = makeAddr("rob");
-    address public factory0 = makeAddr("factory0");
-    address public factory1 = makeAddr("factory1");
-    address public quoter0 = makeAddr("quoter0");
-    address public quoter1 = makeAddr("quoter1");
+    UniswapV3Adapter adapter;
+    address governor = makeAddr("governor");
+    address bob = makeAddr("bob");
+    address alice = makeAddr("alice");
+    address rob = makeAddr("rob");
+    address factory0 = makeAddr("factory0");
+    address factory1 = makeAddr("factory1");
+    address quoter0 = makeAddr("quoter0");
+    address quoter1 = makeAddr("quoter1");
 
     function setUp() public {
         adapter = new UniswapV3Adapter(governor, "UniswapV3Adapter 1.0");
