@@ -20,6 +20,7 @@
     "format-check": "forge fmt --check"
   },
   "dependencies": {
+    "@balancer-labs/v2-interfaces": "^0.4.0",
     "@chainlink/contracts": "^0.8.0",
     "@chainlink/contracts-ccip": "^0.7.6",
     "@openzeppelin/contracts": "^4.9.3",
