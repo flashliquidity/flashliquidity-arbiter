@@ -165,6 +165,7 @@ contract BalancerV2Adapter is DexAdapter, Governable {
         address pool = tokenIn < tokenOut
             ? s_tokensToVaultPools[tokenIn][tokenOut][vault][poolIndex]
             : s_tokensToVaultPools[tokenOut][tokenIn][vault][poolIndex];
+        if(pool == address(0)) revert BalancerV2Adapter__InvalidPool();
         IERC20 inputToken = IERC20(tokenIn);
         inputToken.safeTransferFrom(msg.sender, address(this), amountIn);
         inputToken.forceApprove(vault, amountIn);
