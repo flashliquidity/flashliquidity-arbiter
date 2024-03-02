@@ -7,7 +7,7 @@
     "setup": "yarn && forge install",
     "compile": "forge build",
     "test": "forge test",
-    "unit-test": "forge test --nmt 'Fuzz|invariant|integration'",
+    "unit-test": "forge test --nmt 'Fuzz|invariant|Integration'",
     "integration-test": "forge test --mt Integration",
     "fuzz-test": "forge test --mt Fuzz",
     "invariant-test": "forge test --mt invariant",
