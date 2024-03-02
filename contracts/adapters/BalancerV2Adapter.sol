@@ -21,8 +21,6 @@ contract BalancerV2Adapter is DexAdapter, Governable {
     error BalancerV2Adapter__NotRegisteredVault();
     error BalancerV2Adapter__VaultAlreadyRegistered();
     error BalancerV2Adapter__InvalidPool();
-    error BalancerV2Adapter__InvalidAmountDeltas();
-    error BalancerV2Adapter__InsufficentOutput();
 
     /// @dev Array of vault addresses registered with the contract.
     address[] private s_vaults;
