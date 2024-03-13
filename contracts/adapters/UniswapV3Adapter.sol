@@ -188,13 +188,16 @@ contract UniswapV3Adapter is DexAdapter, Governable, IUniswapV3SwapCallback {
             fee: 0,
             sqrtPriceLimitX96: 0
         });
-        for (uint256 i = 0; i < factoriesLen; ++i) {
+        for (uint256 i = 0; i < factoriesLen;) {
             targetFactory = s_factories[i];
             targetFactoryData = s_factoryData[address(targetFactory)];
             (tempOutput, tempExtraArgs) = _getMaxOutputForFactory(targetFactory, targetFactoryData, quoterParams);
             if (tempOutput > maxOutput) {
                 maxOutput = tempOutput;
                 extraArgs = tempExtraArgs;
+            }
+            unchecked {
+                ++i;
             }
         }
     }
