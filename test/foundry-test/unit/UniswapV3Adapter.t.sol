@@ -31,9 +31,10 @@ contract UniswapV3AdapterTest is Test {
         vm.prank(governor);
         adapter.addFactory(factory0, quoter0, feeValues);
         (address factory, address quoter, uint24[] memory fees) = adapter.getFactoryAtIndex(0);
-        assertTrue(factory == factory0);
-        assertTrue(fees[0] == feeValues[0] && fees[1] == feeValues[1]);
-        assertTrue(quoter == quoter0);
+        assertEq(factory, factory0);
+        assertEq(quoter, quoter0);
+        assertEq(fees[0], feeValues[0]);
+        assertEq(fees[1], feeValues[1]);
     }
 
     function test__UniswapV3Adapter_removeFactory() public {
@@ -52,9 +53,10 @@ contract UniswapV3AdapterTest is Test {
         vm.prank(governor);
         adapter.removeFactory(0);
         (address factory, address quoter, uint24[] memory fees) = adapter.getFactoryAtIndex(0);
-        assertTrue(factory == factory1);
-        assertTrue(quoter == quoter1);
-        assertTrue(fees[0] == feeValues1[0] && fees[1] == feeValues1[1]);
+        assertEq(factory, factory1);
+        assertEq(quoter, quoter1);
+        assertEq(fees[0], feeValues1[0]);
+        assertEq(fees[1], feeValues1[1]);
     }
 
     function test__UniswapV3Adapter_addFactoryFees() public {
@@ -70,9 +72,11 @@ contract UniswapV3AdapterTest is Test {
         vm.prank(governor);
         adapter.addFactoryFees(factory0, newFeeValues);
         (address factory, address quoter, uint24[] memory fees) = adapter.getFactoryAtIndex(0);
-        assertTrue(factory == factory0);
-        assertTrue(fees[0] == feeValues[0] && fees[1] == newFeeValues[0] && fees[2] == newFeeValues[1]);
-        assertTrue(quoter == quoter0);
+        assertEq(factory, factory0);
+        assertEq(quoter, quoter0);
+        assertEq(fees[0], feeValues[0]);
+        assertEq(fees[1], newFeeValues[0]);
+        assertEq(fees[2], newFeeValues[1]);
     }
 
     function test__UniswapV3Adapter_removeFactoryFees() public {
@@ -86,8 +90,8 @@ contract UniswapV3AdapterTest is Test {
         vm.prank(governor);
         adapter.removeFactoryFee(factory0, 0);
         (address factory, address quoter, uint24[] memory fees) = adapter.getFactoryAtIndex(0);
-        assertTrue(factory == factory0);
-        assertTrue(fees[0] == feeValues[1]);
-        assertTrue(quoter == quoter0);
+        assertEq(factory, factory0);
+        assertEq(quoter, quoter0);
+        assertEq(fees[0], feeValues[1]);
     }
 }

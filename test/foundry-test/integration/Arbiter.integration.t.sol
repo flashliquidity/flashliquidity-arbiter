@@ -18,14 +18,12 @@ contract ArbiterIntegrationTest is Test, ArbiterHelpers {
     UniswapV2Adapter uniV2Adapter;
     UniswapV3Adapter uniV3Adapter;
     IUniswapV2Router02 flRouter = IUniswapV2Router02(0xaf5990f587f4e10aE0361f657712F9B1067e25b3);
-    uint256 arbitrumFork;
     address governor = address(0x95E05C9870718cb171C04080FDd186571475027E);
     address verifierProxy = address(0x478Aa2aC9F6D65F84e09D9185d126c3a17c2a93C);
     address bob = makeAddr("bob");
     address rewardVault = makeAddr("rewardVault");
     address linkToken = makeAddr("linkToken");
     address automationForwarder = makeAddr("forwarder");
-
     address flFactory = address(0x6e553d5f028bD747a27E138FA3109570081A23aE);
     address uniV3Factory = address(0x1F98431c8aD98523631AE4a59f267346ea31F984);
     address uniV3Quoter = address(0xc80f61d1bdAbD8f5285117e1558fDDf8C64870FE);
@@ -37,8 +35,8 @@ contract ArbiterIntegrationTest is Test, ArbiterHelpers {
     address USDC = address(0xaf88d065e77c8cC2239327C5EDb3A432268e5831);
     address ethFeed = address(0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612);
     address usdcFeed = address(0x50834F3163758fcC1Df9973b6e91f0F0F0434aD3);
-
     uint32 priceMaxStaleness = 86400;
+    uint256 arbitrumFork;
 
     function setUp() public {
         arbitrumFork = vm.createSelectFork("https://arb1.arbitrum.io/rpc");

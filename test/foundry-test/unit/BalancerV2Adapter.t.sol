@@ -11,14 +11,14 @@ import {BalancerV2PoolMock} from "../../mocks/BalancerV2PoolMock.sol";
 
 contract BalancerV2AdapterTest is Test {
     BalancerV2Adapter adapter;
-    address governor = makeAddr("governor");
-    address bob = makeAddr("bob");
-    address alice = makeAddr("alice");
-    address rob = makeAddr("rob");
     BalancerV2VaultMock vault0;
     BalancerV2VaultMock vault1;
     BalancerV2PoolMock pool0;
     BalancerV2PoolMock pool1;
+    address governor = makeAddr("governor");
+    address bob = makeAddr("bob");
+    address alice = makeAddr("alice");
+    address rob = makeAddr("rob");
     address token0 = makeAddr("token0");
     address token1 = makeAddr("token1");
     address token2 = makeAddr("token2");
@@ -59,7 +59,7 @@ contract BalancerV2AdapterTest is Test {
         adapter.removeVault(0);
         vm.prank(governor);
         adapter.removeVault(0);
-        assertTrue(adapter.getVaultAtIndex(0) == address(vault1));
+        assertEq(adapter.getVaultAtIndex(0), address(vault1));
     }
 
     function test__BalancerV2Adapter_addVaultPools() public {
@@ -71,8 +71,9 @@ contract BalancerV2AdapterTest is Test {
         vm.prank(governor);
         adapter.addVaultPools(address(vault0), pools);
         address[] memory registeredPools = adapter.getVaultPools(address(vault0), token0, token1);
-        assertTrue(registeredPools.length == 2);
-        assertTrue(registeredPools[0] == address(pool0) && registeredPools[1] == address(pool1));
+        assertEq(registeredPools.length, 2);
+        assertEq(registeredPools[0], address(pool0));
+        assertEq(registeredPools[1], address(pool1));
     }
 
     function test__BalancerV2Adapter_removeVaultPools() public {
@@ -86,6 +87,6 @@ contract BalancerV2AdapterTest is Test {
         vm.prank(governor);
         adapter.removeVaultPools(address(vault0), pools);
         address[] memory registeredPools = adapter.getVaultPools(address(vault0), token0, token1);
-        assertTrue(registeredPools.length == 0);
+        assertEq(registeredPools.length, 0);
     }
 }

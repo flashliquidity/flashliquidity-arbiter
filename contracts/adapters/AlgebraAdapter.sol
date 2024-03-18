@@ -139,12 +139,15 @@ contract AlgebraAdapter is DexAdapter, Governable, IAlgebraSwapCallback {
         bool success;
         bytes memory returnData;
         IAlgebraFactory targetFactory;
-        bytes memory encodedQuoterParams = abi.encodeWithSelector(IAlgebraQuoter.quoteExactInputSingle.selector, IAlgebraQuoter.QuoteExactInputSingleParams({
-            tokenIn: tokenIn,
-            tokenOut: tokenOut,
-            amountIn: amountIn,
-            sqrtPriceLimitX96: 0
-        }));
+        bytes memory encodedQuoterParams = abi.encodeWithSelector(
+            IAlgebraQuoter.quoteExactInputSingle.selector,
+            IAlgebraQuoter.QuoteExactInputSingleParams({
+                tokenIn: tokenIn,
+                tokenOut: tokenOut,
+                amountIn: amountIn,
+                sqrtPriceLimitX96: 0
+            })
+        );
         for (uint256 i = 0; i < factoriesLen;) {
             targetFactory = s_factories[i];
             (success, returnData) = s_factoryData[address(targetFactory)].quoter.staticcall(encodedQuoterParams);
@@ -169,11 +172,7 @@ contract AlgebraAdapter is DexAdapter, Governable, IAlgebraSwapCallback {
      * @notice The function will return the address of the factory along with its quoter.
      *         It is important to ensure that the factoryIndex is within the bounds of the array to avoid out-of-bounds errors.
      */
-    function getFactoryAtIndex(uint256 factoryIndex)
-        external
-        view
-        returns (address factory, address quoter)
-    {
+    function getFactoryAtIndex(uint256 factoryIndex) external view returns (address factory, address quoter) {
         factory = address(s_factories[factoryIndex]);
         AlgebraFactoryData memory factoryData = s_factoryData[factory];
         quoter = factoryData.quoter;

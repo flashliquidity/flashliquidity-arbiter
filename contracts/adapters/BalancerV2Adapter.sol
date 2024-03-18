@@ -27,7 +27,8 @@ contract BalancerV2Adapter is DexAdapter, Governable {
     /// @dev Mapping to track registration status of each vault.
     mapping(address vault => bool isRegistered) private s_isRegisteredVault;
     /// @dev Nested mapping to store pools associated with specific token pairs for each vault.
-    mapping(address token0 => mapping(address token1 => mapping(address vault => address[] pools))) private s_tokensToVaultPools;
+    mapping(address token0 => mapping(address token1 => mapping(address vault => address[] pools))) private
+        s_tokensToVaultPools;
     /// @dev Mapping to track the index of a token in a liquidity pool.
     mapping(address pool => mapping(address token => uint128 tokenIndex)) private s_poolToTokenIndex;
 
@@ -163,7 +164,7 @@ contract BalancerV2Adapter is DexAdapter, Governable {
         address pool = tokenIn < tokenOut
             ? s_tokensToVaultPools[tokenIn][tokenOut][vault][poolIndex]
             : s_tokensToVaultPools[tokenOut][tokenIn][vault][poolIndex];
-        if(pool == address(0)) revert BalancerV2Adapter__InvalidPool();
+        if (pool == address(0)) revert BalancerV2Adapter__InvalidPool();
         IERC20 inputToken = IERC20(tokenIn);
         inputToken.safeTransferFrom(msg.sender, address(this), amountIn);
         inputToken.forceApprove(vault, amountIn);
@@ -267,8 +268,13 @@ contract BalancerV2Adapter is DexAdapter, Governable {
      * @param token1 The address of the second token in the token pair.
      * @return pools An array of pool addresses that are associated with the specified vault and token pair.
      */
-    function getVaultPools(address vault, address token0, address token1) external view returns (address[] memory pools) {
-        return token0 < token1 ? s_tokensToVaultPools[token0][token1][vault] : s_tokensToVaultPools[token1][token0][vault];
+    function getVaultPools(address vault, address token0, address token1)
+        external
+        view
+        returns (address[] memory pools)
+    {
+        return
+            token0 < token1 ? s_tokensToVaultPools[token0][token1][vault] : s_tokensToVaultPools[token1][token0][vault];
     }
 
     /// @return vaultsLength The number of vaults currently registered

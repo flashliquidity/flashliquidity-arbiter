@@ -11,14 +11,14 @@ import {ERC20} from "../../mocks/ERC20Mock.sol";
 
 contract BalancerV2AdapterIntegrationTest is Test {
     BalancerV2Adapter adapter;
-    uint256 arbitrumFork;
+    IWETH WETH = IWETH(0x82aF49447D8a07e3bd95BD0d56f35241523fBab1);
     address governor = makeAddr("governor");
     address balancerV2Vault = address(0xBA12222222228d8Ba445958a75a0704d566BF2C8);
     address balancerQuoter = address(0xE39B5e3B6D74016b2F6A9673D7d7493B6DF549d5);
     address wbtcWethUsdcPool = address(0x64541216bAFFFEec8ea535BB71Fbc927831d0595);
     address wstEthWethPool = address(0x9791d590788598535278552EEcD4b211bFc790CB);
-    IWETH WETH = IWETH(0x82aF49447D8a07e3bd95BD0d56f35241523fBab1);
     address WBTC = address(0x2f2a2543B76A4166549F7aaB2e75Bef0aefC5B0f);
+    uint256 arbitrumFork;
 
     function setUp() public {
         arbitrumFork = vm.createSelectFork("https://arb1.arbitrum.io/rpc");
@@ -34,8 +34,9 @@ contract BalancerV2AdapterIntegrationTest is Test {
     function testIntegration__BalancerV2Adapter_getMaxOutput() public {
         (uint256 maxOutput, bytes memory extraArgs) = adapter.getMaxOutput(address(WETH), WBTC, 1 ether);
         (address vault, uint256 poolIndex) = abi.decode(extraArgs, (address, uint256));
-        assertTrue(maxOutput > 0 && vault == balancerV2Vault);
-        assertTrue(poolIndex == 0);
+        assertTrue(maxOutput > 0);
+        assertEq(vault, balancerV2Vault);
+        assertEq(poolIndex, 0);
     }
 
     function testIntegration__BalancerV2Adapter_swap() public {
@@ -44,6 +45,6 @@ contract BalancerV2AdapterIntegrationTest is Test {
         WETH.deposit{value: 1 ether}();
         ERC20(address(WETH)).approve(address(adapter), 1 ether);
         adapter.swap(address(WETH), WBTC, msg.sender, 1 ether, maxOutput, extraArgs);
-        assertTrue(ERC20(WBTC).balanceOf(msg.sender) == maxOutput);
+        assertEq(ERC20(WBTC).balanceOf(msg.sender), maxOutput);
     }
 }

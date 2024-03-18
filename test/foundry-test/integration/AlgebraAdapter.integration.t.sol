@@ -12,12 +12,12 @@ import "forge-std/console.sol";
 
 contract AlgebraAdapterIntegrationTest is Test {
     AlgebraAdapter adapter;
-    uint256 polygonFork;
+    IWETH WETH = IWETH(0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270);
     address governor = makeAddr("governor");
     address algebraFactory = address(0x411b0fAcC3489691f28ad58c47006AF5E3Ab3A28);
     address algebraQuoter = address(0x2E0A046481c676235B806Bd004C4b492C850fb34);
-    IWETH WETH = IWETH(0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270);
     address USDC = address(0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174);
+    uint256 polygonFork;
 
     function setUp() public {
         polygonFork = vm.createSelectFork("https://rpc.ankr.com/polygon");

@@ -28,8 +28,8 @@ contract AlgebraAdapterTest is Test {
         vm.prank(governor);
         adapter.addFactory(factory0, quoter0);
         (address factory, address quoter) = adapter.getFactoryAtIndex(0);
-        assertTrue(factory == factory0);
-        assertTrue(quoter == quoter0);
+        assertEq(factory, factory0);
+        assertEq(quoter, quoter0);
     }
 
     function test__AlgebraAdapter_removeFactory() public {
@@ -42,7 +42,7 @@ contract AlgebraAdapterTest is Test {
         vm.prank(governor);
         adapter.removeFactory(0);
         (address factory, address quoter) = adapter.getFactoryAtIndex(0);
-        assertTrue(factory == factory1);
-        assertTrue(quoter == quoter1);
+        assertEq(factory, factory1);
+        assertEq(quoter, quoter1);
     }
 }

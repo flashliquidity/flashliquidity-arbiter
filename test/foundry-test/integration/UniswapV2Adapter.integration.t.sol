@@ -11,11 +11,11 @@ import {ERC20} from "../../mocks/ERC20Mock.sol";
 
 contract UniswapV2AdapterIntegrationTest is Test {
     UniswapV2Adapter adapter;
-    uint256 arbitrumFork;
+    IWETH WETH = IWETH(0x82aF49447D8a07e3bd95BD0d56f35241523fBab1);
     address uniV2ForkFactory = address(0xd394E9CC20f43d2651293756F8D320668E850F1b);
     address governor = makeAddr("governor");
-    IWETH WETH = IWETH(0x82aF49447D8a07e3bd95BD0d56f35241523fBab1);
     address USDC = address(0xaf88d065e77c8cC2239327C5EDb3A432268e5831);
+    uint256 arbitrumFork;
 
     function setUp() public {
         arbitrumFork = vm.createSelectFork("https://arb1.arbitrum.io/rpc");

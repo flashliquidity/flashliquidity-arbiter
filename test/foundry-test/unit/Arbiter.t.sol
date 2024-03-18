@@ -14,6 +14,9 @@ import {ArbiterHelpers} from "../../helpers/ArbiterHelpers.sol";
 
 contract ArbiterTest is Test, ArbiterHelpers {
     Arbiter arbiter;
+    ERC20Mock linkToken;
+    ERC20Mock mockToken;
+    FlashLiquidityPairMock pairMock;
     address governor = makeAddr("governor");
     address verifierProxy;
     address feeManager;
@@ -21,17 +24,13 @@ contract ArbiterTest is Test, ArbiterHelpers {
     address alice = makeAddr("alice");
     address rob = makeAddr("rob");
     address forwarder = makeAddr("forwarder");
-
-    ERC20Mock linkToken;
-    ERC20Mock mockToken;
-    FlashLiquidityPairMock pairMock;
     uint256 supply = 1e9 ether;
     uint32 priceMaxStaleness = 60;
 
     function setUp() public {
         vm.prank(governor);
-        linkToken = new ERC20Mock("LINK","LINK", supply);
-        mockToken = new ERC20Mock("MOCK","MOCK", supply);
+        linkToken = new ERC20Mock("LINK", "LINK", supply);
+        mockToken = new ERC20Mock("MOCK", "MOCK", supply);
         feeManager = address(new FeeManagerMock(address(linkToken)));
         verifierProxy = address(new VerifierProxyMock(feeManager));
         pairMock = new FlashLiquidityPairMock(address(linkToken), address(mockToken), governor);
@@ -42,19 +41,19 @@ contract ArbiterTest is Test, ArbiterHelpers {
         uint32 newPriceMaxStaleness = 420;
         vm.expectRevert(Governable.Governable__NotAuthorized.selector);
         arbiter.setPriceMaxStaleness(newPriceMaxStaleness);
-        assertFalse(arbiter.getPriceMaxStaleness() == newPriceMaxStaleness);
+        assertNotEq(arbiter.getPriceMaxStaleness(), newPriceMaxStaleness);
         vm.prank(governor);
         arbiter.setPriceMaxStaleness(newPriceMaxStaleness);
-        assertTrue(arbiter.getPriceMaxStaleness() == newPriceMaxStaleness);
+        assertEq(arbiter.getPriceMaxStaleness(), newPriceMaxStaleness);
     }
 
     function test__Arbiter_setVerifier() public {
         vm.expectRevert(Governable.Governable__NotAuthorized.selector);
         arbiter.setVerifierProxy(alice);
-        assertFalse(arbiter.getVerifierProxy() == alice);
+        assertNotEq(arbiter.getVerifierProxy(), alice);
         vm.prank(governor);
         arbiter.setVerifierProxy(alice);
-        assertTrue(arbiter.getVerifierProxy() == alice);
+        assertEq(arbiter.getVerifierProxy(), alice);
     }
 
     function test__Arbiter_setDataFeeds() public {
@@ -66,12 +65,12 @@ contract ArbiterTest is Test, ArbiterHelpers {
         dataFeeds[1] = bob;
         vm.expectRevert(Governable.Governable__NotAuthorized.selector);
         arbiter.setDataFeeds(tokens, dataFeeds);
-        assertFalse(arbiter.getDataFeed(tokens[0]) == dataFeeds[0]);
-        assertFalse(arbiter.getDataFeed(tokens[1]) == dataFeeds[1]);
+        assertNotEq(arbiter.getDataFeed(tokens[0]), dataFeeds[0]);
+        assertNotEq(arbiter.getDataFeed(tokens[1]), dataFeeds[1]);
         vm.prank(governor);
         arbiter.setDataFeeds(tokens, dataFeeds);
-        assertTrue(arbiter.getDataFeed(tokens[0]) == dataFeeds[0]);
-        assertTrue(arbiter.getDataFeed(tokens[1]) == dataFeeds[1]);
+        assertEq(arbiter.getDataFeed(tokens[0]), dataFeeds[0]);
+        assertEq(arbiter.getDataFeed(tokens[1]), dataFeeds[1]);
         tokens = new address[](1);
         vm.prank(governor);
         vm.expectRevert(Arbiter.Arbiter__InconsistentParamsLength.selector);
@@ -87,20 +86,16 @@ contract ArbiterTest is Test, ArbiterHelpers {
         feedIDs[1] = "feedID1";
         vm.expectRevert(Governable.Governable__NotAuthorized.selector);
         arbiter.setDataStreams(tokens, feedIDs);
-        assertFalse(
-            keccak256(abi.encodePacked(arbiter.getDataStream(tokens[0]))) == keccak256(abi.encodePacked(feedIDs[0]))
+        assertNotEq(
+            keccak256(abi.encodePacked(arbiter.getDataStream(tokens[0]))), keccak256(abi.encodePacked(feedIDs[0]))
         );
-        assertFalse(
-            keccak256(abi.encodePacked(arbiter.getDataStream(tokens[1]))) == keccak256(abi.encodePacked(feedIDs[1]))
+        assertNotEq(
+            keccak256(abi.encodePacked(arbiter.getDataStream(tokens[1]))), keccak256(abi.encodePacked(feedIDs[1]))
         );
         vm.prank(governor);
         arbiter.setDataStreams(tokens, feedIDs);
-        assertTrue(
-            keccak256(abi.encodePacked(arbiter.getDataStream(tokens[0]))) == keccak256(abi.encodePacked(feedIDs[0]))
-        );
-        assertTrue(
-            keccak256(abi.encodePacked(arbiter.getDataStream(tokens[1]))) == keccak256(abi.encodePacked(feedIDs[1]))
-        );
+        assertEq(keccak256(abi.encodePacked(arbiter.getDataStream(tokens[0]))), keccak256(abi.encodePacked(feedIDs[0])));
+        assertEq(keccak256(abi.encodePacked(arbiter.getDataStream(tokens[1]))), keccak256(abi.encodePacked(feedIDs[1])));
         tokens = new address[](1);
         vm.prank(governor);
         vm.expectRevert(Arbiter.Arbiter__InconsistentParamsLength.selector);
@@ -129,15 +124,18 @@ contract ArbiterTest is Test, ArbiterHelpers {
             uint8 token1Decimals,
             address automationForwarder
         ) = arbiter.getJobConfig(address(pairMock));
-        assertTrue(rewardVault == governor);
-        assertTrue(jobMinProfitUSD == minProfitUSD);
-        assertTrue(token0 == address(linkToken) && token1 == address(mockToken));
-        assertTrue(token0Decimals == linkToken.decimals() && token1Decimals == mockToken.decimals());
-        assertTrue(automationForwarder == forwarder);
+        assertEq(rewardVault, governor);
+        assertEq(jobMinProfitUSD, minProfitUSD);
+        assertEq(token0, address(linkToken));
+        assertEq(token1, address(mockToken));
+        assertEq(token0Decimals, linkToken.decimals());
+        assertEq(token1Decimals, mockToken.decimals());
+        assertEq(automationForwarder, forwarder);
         arbiter.setArbiterJob(address(pairMock), governor, bob, minProfitUSD, 8, 0);
         (rewardVault, jobMinProfitUSD, token0, token1, token0Decimals, token1Decimals, automationForwarder) =
             arbiter.getJobConfig(address(pairMock));
-        assertTrue(token0Decimals == 8 && token1Decimals == mockToken.decimals());
+        assertEq(token0Decimals, 8);
+        assertEq(token1Decimals, mockToken.decimals());
         vm.stopPrank();
     }
 
@@ -161,11 +159,13 @@ contract ArbiterTest is Test, ArbiterHelpers {
             uint8 token1Decimals,
             address automationForwarder
         ) = arbiter.getJobConfig(address(pairMock));
-        assertTrue(rewardVault == address(0));
-        assertTrue(jobMinProfitUSD == uint96(0));
-        assertTrue(token0 == address(0) && token1 == address(0));
-        assertTrue(token0Decimals == uint8(0) && token1Decimals == uint8(0));
-        assertTrue(automationForwarder == address(0));
+        assertEq(rewardVault, address(0));
+        assertEq(jobMinProfitUSD, uint96(0));
+        assertEq(token0, address(0));
+        assertEq(token1, address(0));
+        assertEq(token0Decimals, uint8(0));
+        assertEq(token1Decimals, uint8(0));
+        assertEq(automationForwarder, address(0));
     }
 
     function test__Arbiter_pushDexAdapter() public {
@@ -173,7 +173,7 @@ contract ArbiterTest is Test, ArbiterHelpers {
         arbiter.pushDexAdapter(bob);
         vm.prank(governor);
         arbiter.pushDexAdapter(bob);
-        assertTrue(arbiter.getDexAdapter(0) == bob);
+        assertEq(arbiter.getDexAdapter(0), bob);
     }
 
     function test__Arbiter_removeDexAdapter() public {
@@ -185,7 +185,7 @@ contract ArbiterTest is Test, ArbiterHelpers {
         arbiter.removeDexAdapter(0);
         vm.startPrank(governor);
         arbiter.removeDexAdapter(0);
-        assertTrue(arbiter.getDexAdapter(0) == rob);
+        assertEq(arbiter.getDexAdapter(0), rob);
         vm.expectRevert(Arbiter.Arbiter__OutOfBound.selector);
         arbiter.removeDexAdapter(1);
         arbiter.removeDexAdapter(0);
@@ -215,11 +215,11 @@ contract ArbiterTest is Test, ArbiterHelpers {
         arbiter.recoverERC20(bob, tokens, amounts);
         vm.startPrank(governor);
         linkToken.transfer(address(arbiter), 1 ether);
-        assertTrue(linkToken.balanceOf(address(arbiter)) == 1 ether);
-        assertTrue(linkToken.balanceOf(bob) == 0);
+        assertEq(linkToken.balanceOf(address(arbiter)), 1 ether);
+        assertEq(linkToken.balanceOf(bob), 0);
         arbiter.recoverERC20(bob, tokens, amounts);
-        assertTrue(linkToken.balanceOf(address(arbiter)) == 0);
-        assertTrue(linkToken.balanceOf(bob) == 1 ether);
+        assertEq(linkToken.balanceOf(address(arbiter)), 0);
+        assertEq(linkToken.balanceOf(bob), 1 ether);
         vm.stopPrank();
     }
 }

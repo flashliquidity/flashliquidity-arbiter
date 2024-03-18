@@ -28,9 +28,9 @@ contract UniswapV2AdapterTest is Test {
         vm.prank(governor);
         adapter.addFactory(factory0, feeNumeratorVal, feeDenominatorVal);
         (address factory, uint48 feeNumerator, uint48 feeDenominator) = adapter.getFactoryAtIndex(0);
-        assertTrue(factory == factory0);
-        assertTrue(feeNumerator == feeNumeratorVal);
-        assertTrue(feeDenominator == feeDenominatorVal);
+        assertEq(factory, factory0);
+        assertEq(feeNumerator, feeNumeratorVal);
+        assertEq(feeDenominator, feeDenominatorVal);
     }
 
     function test__UniswapV2Adapter_removeFactory() public {
@@ -46,8 +46,8 @@ contract UniswapV2AdapterTest is Test {
         vm.prank(governor);
         adapter.removeFactory(0);
         (address factory, uint48 feeNumerator, uint48 feeDenominator) = adapter.getFactoryAtIndex(0);
-        assertTrue(factory == factory1);
-        assertTrue(feeNumerator == feeNumeratorVal1);
-        assertTrue(feeDenominator == feeDenominatorVal);
+        assertEq(factory, factory1);
+        assertEq(feeNumerator, feeNumeratorVal1);
+        assertEq(feeDenominator, feeDenominatorVal);
     }
 }

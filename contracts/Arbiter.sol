@@ -285,7 +285,7 @@ contract Arbiter is IArbiter, AutomationCompatibleInterface, StreamsLookupCompat
     function performUpkeep(bytes calldata performData) external override {
         (bytes[] memory signedReports, ArbiterCall memory call) = abi.decode(performData, (bytes[], ArbiterCall));
         ArbiterJobConfig memory jobConfig = s_jobConfig[call.selfBalancingPool];
-        if(msg.sender != jobConfig.automationForwarder) revert Arbiter__NotFromForwarder();
+        if (msg.sender != jobConfig.automationForwarder) revert Arbiter__NotFromForwarder();
         CallbackData memory callbackData = CallbackData({
             selfBalancingPool: call.selfBalancingPool,
             token0: jobConfig.tokenIn,
