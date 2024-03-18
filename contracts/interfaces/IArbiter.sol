@@ -42,6 +42,7 @@ interface IArbiter {
      * @dev Registers an Arbiter job to monitor a specific self-balancing pool for rebalancing needs.
      * @param selfBalancingPool The address of the self-balancing pool to be monitored.
      * @param rewardVault The address of the reward vault where rebalancing profits will be deposited.
+     * @param automationForwarder The address of the forwarder for the upkeep associated with this rebalancing job.
      * @param minProfitUSD The minimum profit in USD (with 8 decimals) required to trigger a rebalancing operation.
      * @param forceToken0Decimals The decimal count to be used for token0, especially for non-standard ERC20 tokens that do not comply with the IERC20Metadata interface.
      * @param forceToken1Decimals The decimal count to be used for token1, especially for non-standard ERC20 tokens that do not comply with the IERC20Metadata interface.
@@ -50,6 +51,7 @@ interface IArbiter {
     function setArbiterJob(
         address selfBalancingPool,
         address rewardVault,
+        address automationForwarder,
         uint96 minProfitUSD,
         uint8 forceToken0Decimals,
         uint8 forceToken1Decimals
@@ -110,6 +112,7 @@ interface IArbiter {
      * @return token1 The address of token1 in the self-balancing pool.
      * @return token0Decimals The number of decimals for token0.
      * @return token1Decimals The number of decimals for token1.
+     * @param automationForwarder The address of the forwarder for the upkeep associated with this rebalancing job.
      * @notice This function provides detailed information about the configuration of a specific Arbiter job.
      */
     function getJobConfig(address selfBalancingPool)
@@ -121,7 +124,8 @@ interface IArbiter {
             address token0,
             address token1,
             uint8 token0Decimals,
-            uint8 token1Decimals
+            uint8 token1Decimals,
+            address automationForwarder
         );
 
     /// @param token The address of the token for which the Chainlink Data Feed address is to be retrieved.

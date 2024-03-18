@@ -20,6 +20,7 @@ contract ArbiterTest is Test, ArbiterHelpers {
     address bob = makeAddr("bob");
     address alice = makeAddr("alice");
     address rob = makeAddr("rob");
+    address forwarder = makeAddr("forwarder");
 
     ERC20Mock linkToken;
     ERC20Mock mockToken;
@@ -109,30 +110,32 @@ contract ArbiterTest is Test, ArbiterHelpers {
     function test__Arbiter_setArbiterJob() public {
         uint96 minProfitUSD = 1e8;
         vm.expectRevert(Governable.Governable__NotAuthorized.selector);
-        arbiter.setArbiterJob(address(pairMock), governor, minProfitUSD, 0, 0);
+        arbiter.setArbiterJob(address(pairMock), governor, forwarder, minProfitUSD, 0, 0);
         vm.startPrank(governor);
         vm.expectRevert(Arbiter.Arbiter__NotManager.selector);
-        arbiter.setArbiterJob(address(pairMock), governor, minProfitUSD, 0, 0);
+        arbiter.setArbiterJob(address(pairMock), governor, forwarder, minProfitUSD, 0, 0);
         pairMock.setManager(address(arbiter));
         vm.expectRevert(Arbiter.Arbiter__DataFeedNotSet.selector);
-        arbiter.setArbiterJob(address(pairMock), governor, minProfitUSD, 0, 0);
+        arbiter.setArbiterJob(address(pairMock), governor, forwarder, minProfitUSD, 0, 0);
         setDataFeed(arbiter, address(linkToken), bob);
         setDataFeed(arbiter, address(mockToken), rob);
-        arbiter.setArbiterJob(address(pairMock), governor, minProfitUSD, 0, 0);
+        arbiter.setArbiterJob(address(pairMock), governor, forwarder, minProfitUSD, 0, 0);
         (
             address rewardVault,
             uint96 jobMinProfitUSD,
             address token0,
             address token1,
             uint8 token0Decimals,
-            uint8 token1Decimals
+            uint8 token1Decimals,
+            address automationForwarder
         ) = arbiter.getJobConfig(address(pairMock));
         assertTrue(rewardVault == governor);
         assertTrue(jobMinProfitUSD == minProfitUSD);
         assertTrue(token0 == address(linkToken) && token1 == address(mockToken));
         assertTrue(token0Decimals == linkToken.decimals() && token1Decimals == mockToken.decimals());
-        arbiter.setArbiterJob(address(pairMock), governor, minProfitUSD, 8, 0);
-        (rewardVault, jobMinProfitUSD, token0, token1, token0Decimals, token1Decimals) =
+        assertTrue(automationForwarder == forwarder);
+        arbiter.setArbiterJob(address(pairMock), governor, bob, minProfitUSD, 8, 0);
+        (rewardVault, jobMinProfitUSD, token0, token1, token0Decimals, token1Decimals, automationForwarder) =
             arbiter.getJobConfig(address(pairMock));
         assertTrue(token0Decimals == 8 && token1Decimals == mockToken.decimals());
         vm.stopPrank();
@@ -143,7 +146,7 @@ contract ArbiterTest is Test, ArbiterHelpers {
         pairMock.setManager(address(arbiter));
         setDataFeed(arbiter, address(linkToken), bob);
         setDataFeed(arbiter, address(mockToken), rob);
-        arbiter.setArbiterJob(address(pairMock), governor, 420, 0, 0);
+        arbiter.setArbiterJob(address(pairMock), governor, forwarder, 420, 0, 0);
         vm.stopPrank();
         vm.expectRevert(Governable.Governable__NotAuthorized.selector);
         arbiter.deleteArbiterJob(address(pairMock));
@@ -155,12 +158,14 @@ contract ArbiterTest is Test, ArbiterHelpers {
             address token0,
             address token1,
             uint8 token0Decimals,
-            uint8 token1Decimals
+            uint8 token1Decimals,
+            address automationForwarder
         ) = arbiter.getJobConfig(address(pairMock));
         assertTrue(rewardVault == address(0));
         assertTrue(jobMinProfitUSD == uint96(0));
         assertTrue(token0 == address(0) && token1 == address(0));
         assertTrue(token0Decimals == uint8(0) && token1Decimals == uint8(0));
+        assertTrue(automationForwarder == address(0));
     }
 
     function test__Arbiter_pushDexAdapter() public {
@@ -186,6 +191,19 @@ contract ArbiterTest is Test, ArbiterHelpers {
         arbiter.removeDexAdapter(0);
         vm.expectRevert();
         arbiter.getDexAdapter(0);
+    }
+
+    function test__Arbiter__performUpkeepRevertIfNotForwarder() public {
+        vm.startPrank(governor);
+        pairMock.setManager(address(arbiter));
+        setDataFeed(arbiter, address(linkToken), bob);
+        setDataFeed(arbiter, address(mockToken), rob);
+        arbiter.setArbiterJob(address(pairMock), governor, forwarder, 1000, 0, 0);
+        vm.stopPrank();
+        Arbiter.ArbiterCall memory call;
+        call.selfBalancingPool = address(pairMock);
+        vm.expectRevert(Arbiter.Arbiter__NotFromForwarder.selector);
+        arbiter.performUpkeep(abi.encode(new bytes[](0), call));
     }
 
     function test__Arbiter_recoverERC20() public {

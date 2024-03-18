@@ -24,6 +24,7 @@ contract ArbiterIntegrationTest is Test, ArbiterHelpers {
     address bob = makeAddr("bob");
     address rewardVault = makeAddr("rewardVault");
     address linkToken = makeAddr("linkToken");
+    address automationForwarder = makeAddr("forwarder");
 
     address flFactory = address(0x6e553d5f028bD747a27E138FA3109570081A23aE);
     address uniV3Factory = address(0x1F98431c8aD98523631AE4a59f267346ea31F984);
@@ -50,7 +51,7 @@ contract ArbiterIntegrationTest is Test, ArbiterHelpers {
         setDataFeed(arbiter, ETH, ethFeed);
         setDataFeed(arbiter, USDC, usdcFeed);
         IFlashLiquidityFactory(flFactory).setPairManager(flEthUsdc, address(arbiter));
-        arbiter.setArbiterJob(flEthUsdc, rewardVault, 0, 0, 0);
+        arbiter.setArbiterJob(flEthUsdc, rewardVault, automationForwarder, 0, 0, 0);
         uniV2Adapter.addFactory(uniV2ForkFactory, 997, 1000);
         uniV3Adapter.addFactory(uniV3Factory, uniV3Quoter, uniV3Fees);
         vm.stopPrank();
@@ -75,6 +76,7 @@ contract ArbiterIntegrationTest is Test, ArbiterHelpers {
         uint256 balance0 = ERC20(ETH).balanceOf(rewardVault);
         uint256 balance1 = ERC20(USDC).balanceOf(rewardVault);
         assertFalse(balance0 > 0 || balance1 > 0);
+        vm.prank(automationForwarder);
         arbiter.performUpkeep(performData);
         balance0 = ERC20(ETH).balanceOf(rewardVault);
         balance1 = ERC20(USDC).balanceOf(rewardVault);

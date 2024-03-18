@@ -39,6 +39,7 @@ contract Arbiter is IArbiter, AutomationCompatibleInterface, StreamsLookupCompat
     error Arbiter__NotPermissionedPair();
     error Arbiter__InsufficentProfit();
     error Arbiter__NotFromArbiter();
+    error Arbiter__NotFromForwarder();
     error Arbiter__DataFeedNotSet();
     error Arbiter__InvalidPrice();
     error Arbiter__StalenessTooHigh();
@@ -55,6 +56,7 @@ contract Arbiter is IArbiter, AutomationCompatibleInterface, StreamsLookupCompat
         address tokenOut; // Address of the output token for the rebalancing trade.
         uint8 tokenInDecimals; // Decimal count of the input token.
         uint8 tokenOutDecimals; // Decimal count of the output token.
+        address automationForwarder; // Intermediary between the Chainlink Automation Registry and the Arbiter
     }
 
     struct ArbiterCall {
@@ -188,6 +190,7 @@ contract Arbiter is IArbiter, AutomationCompatibleInterface, StreamsLookupCompat
     function setArbiterJob(
         address selfBalancingPool,
         address rewardVault,
+        address automationForwarder,
         uint96 minProfitUSD,
         uint8 forceToken0Decimals,
         uint8 forceToken1Decimals
@@ -205,7 +208,8 @@ contract Arbiter is IArbiter, AutomationCompatibleInterface, StreamsLookupCompat
             tokenIn: token0,
             tokenOut: token1,
             tokenInDecimals: forceToken0Decimals > 0 ? forceToken0Decimals : IERC20Metadata(token0).decimals(),
-            tokenOutDecimals: forceToken1Decimals > 0 ? forceToken1Decimals : IERC20Metadata(token1).decimals()
+            tokenOutDecimals: forceToken1Decimals > 0 ? forceToken1Decimals : IERC20Metadata(token1).decimals(),
+            automationForwarder: automationForwarder
         });
         emit NewArbiterJob(selfBalancingPool, rewardVault);
     }
@@ -281,6 +285,7 @@ contract Arbiter is IArbiter, AutomationCompatibleInterface, StreamsLookupCompat
     function performUpkeep(bytes calldata performData) external override {
         (bytes[] memory signedReports, ArbiterCall memory call) = abi.decode(performData, (bytes[], ArbiterCall));
         ArbiterJobConfig memory jobConfig = s_jobConfig[call.selfBalancingPool];
+        if(msg.sender != jobConfig.automationForwarder) revert Arbiter__NotFromForwarder();
         CallbackData memory callbackData = CallbackData({
             selfBalancingPool: call.selfBalancingPool,
             token0: jobConfig.tokenIn,
@@ -590,7 +595,7 @@ contract Arbiter is IArbiter, AutomationCompatibleInterface, StreamsLookupCompat
     function getJobConfig(address selfBalancingPool)
         external
         view
-        returns (address, uint96, address, address, uint8, uint8)
+        returns (address, uint96, address, address, uint8, uint8, address)
     {
         ArbiterJobConfig memory jobConfig = s_jobConfig[selfBalancingPool];
         return (
@@ -599,7 +604,8 @@ contract Arbiter is IArbiter, AutomationCompatibleInterface, StreamsLookupCompat
             jobConfig.tokenIn,
             jobConfig.tokenOut,
             jobConfig.tokenInDecimals,
-            jobConfig.tokenOutDecimals
+            jobConfig.tokenOutDecimals,
+            jobConfig.automationForwarder
         );
     }
 
