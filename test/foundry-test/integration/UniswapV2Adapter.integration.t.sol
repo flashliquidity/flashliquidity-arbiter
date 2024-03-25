@@ -15,10 +15,9 @@ contract UniswapV2AdapterIntegrationTest is Test {
     address uniV2ForkFactory = address(0xd394E9CC20f43d2651293756F8D320668E850F1b);
     address governor = makeAddr("governor");
     address USDC = address(0xaf88d065e77c8cC2239327C5EDb3A432268e5831);
-    uint256 arbitrumFork;
 
     function setUp() public {
-        arbitrumFork = vm.createSelectFork("https://arb1.arbitrum.io/rpc");
+        vm.createSelectFork("https://arb1.arbitrum.io/rpc");
         adapter = new UniswapV2Adapter(governor, "UniswapV2Adapter 1.0");
         vm.prank(governor);
         adapter.addFactory(uniV2ForkFactory, 997, 1000);

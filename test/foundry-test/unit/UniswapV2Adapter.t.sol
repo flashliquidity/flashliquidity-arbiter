@@ -11,8 +11,6 @@ contract UniswapV2AdapterTest is Test {
     UniswapV2Adapter adapter;
     address governor = makeAddr("governor");
     address bob = makeAddr("bob");
-    address alice = makeAddr("alice");
-    address rob = makeAddr("rob");
     address factory0 = makeAddr("factory0");
     address factory1 = makeAddr("factory1");
 

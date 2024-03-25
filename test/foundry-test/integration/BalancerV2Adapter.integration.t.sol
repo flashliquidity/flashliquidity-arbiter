@@ -18,10 +18,9 @@ contract BalancerV2AdapterIntegrationTest is Test {
     address wbtcWethUsdcPool = address(0x64541216bAFFFEec8ea535BB71Fbc927831d0595);
     address wstEthWethPool = address(0x9791d590788598535278552EEcD4b211bFc790CB);
     address WBTC = address(0x2f2a2543B76A4166549F7aaB2e75Bef0aefC5B0f);
-    uint256 arbitrumFork;
 
     function setUp() public {
-        arbitrumFork = vm.createSelectFork("https://arb1.arbitrum.io/rpc");
+        vm.createSelectFork("https://arb1.arbitrum.io/rpc");
         adapter = new BalancerV2Adapter(governor, "BalancerV2Adapter 1.0");
         address[] memory pools = new address[](1);
         pools[0] = wbtcWethUsdcPool;

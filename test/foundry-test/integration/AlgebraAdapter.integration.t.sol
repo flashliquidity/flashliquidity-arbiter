@@ -17,10 +17,9 @@ contract AlgebraAdapterIntegrationTest is Test {
     address algebraFactory = address(0x411b0fAcC3489691f28ad58c47006AF5E3Ab3A28);
     address algebraQuoter = address(0x2E0A046481c676235B806Bd004C4b492C850fb34);
     address USDC = address(0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174);
-    uint256 polygonFork;
 
     function setUp() public {
-        polygonFork = vm.createSelectFork("https://rpc.ankr.com/polygon");
+        vm.createSelectFork("https://rpc.ankr.com/polygon");
         adapter = new AlgebraAdapter(governor, "AlgebraAdapter 1.0");
         vm.prank(governor);
         adapter.addFactory(algebraFactory, algebraQuoter);

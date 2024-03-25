@@ -17,8 +17,6 @@ contract BalancerV2AdapterTest is Test {
     BalancerV2PoolMock pool1;
     address governor = makeAddr("governor");
     address bob = makeAddr("bob");
-    address alice = makeAddr("alice");
-    address rob = makeAddr("rob");
     address token0 = makeAddr("token0");
     address token1 = makeAddr("token1");
     address token2 = makeAddr("token2");

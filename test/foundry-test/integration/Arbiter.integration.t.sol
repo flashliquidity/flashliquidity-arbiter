@@ -36,10 +36,9 @@ contract ArbiterIntegrationTest is Test, ArbiterHelpers {
     address ethFeed = address(0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612);
     address usdcFeed = address(0x50834F3163758fcC1Df9973b6e91f0F0F0434aD3);
     uint32 priceMaxStaleness = 86400;
-    uint256 arbitrumFork;
 
     function setUp() public {
-        arbitrumFork = vm.createSelectFork("https://arb1.arbitrum.io/rpc");
+        vm.createSelectFork("https://arb1.arbitrum.io/rpc");
         arbiter = new Arbiter(governor, verifierProxy, linkToken, priceMaxStaleness);
         uniV2Adapter = new UniswapV2Adapter(governor, "UniswapV2 Adapter 0.0.1");
         uniV3Adapter = new UniswapV3Adapter(governor, "UniswapV3 Adapter 0.0.1");

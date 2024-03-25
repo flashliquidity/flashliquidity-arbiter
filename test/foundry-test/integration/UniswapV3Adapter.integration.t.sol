@@ -17,10 +17,9 @@ contract UniswapV3AdapterIntegrationTest is Test {
     address uniV3Quoter = address(0xc80f61d1bdAbD8f5285117e1558fDDf8C64870FE);
     uint24[] uniV3Fees = [500, 3000];
     address USDC = address(0xaf88d065e77c8cC2239327C5EDb3A432268e5831);
-    uint256 arbitrumFork;
 
     function setUp() public {
-        arbitrumFork = vm.createSelectFork("https://arb1.arbitrum.io/rpc");
+        vm.createSelectFork("https://arb1.arbitrum.io/rpc");
         adapter = new UniswapV3Adapter(governor, "UniswapV3Adapter 1.0");
         vm.prank(governor);
         adapter.addFactory(uniV3Factory, uniV3Quoter, uniV3Fees);
