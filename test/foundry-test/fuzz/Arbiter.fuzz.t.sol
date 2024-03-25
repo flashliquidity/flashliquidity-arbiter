@@ -17,9 +17,6 @@ contract ArbiterFuzzTest is Test, ArbiterHelpers {
     address governor = makeAddr("governor");
     address verifierProxy;
     address feeManager;
-    address bob = makeAddr("bob");
-    address alice = makeAddr("alice");
-    address rob = makeAddr("rob");
     address adapter = makeAddr("adapter");
     address linkToken = makeAddr("linkToken");
     uint32 priceMaxStaleness = 60;
