@@ -39,8 +39,8 @@ contract UniswapV2Adapter is DexAdapter, Governable {
      * @param factory The address of the UniswapV2 factory to be registered.
      * @param feeNumerator The numerator part of the fee fraction for this factory.
      * @param feeDenominator The denominator part of the fee fraction for this factory.
-     * @notice This function will revert with 'UniswapV2Adapter__AlreadyRegisteredPool' if the pool is already registered.
-     *         It sets the pool as registered and stores its fee structure. It also adds the pool to the list of target pools for the token pair.
+     * @notice This function will revert with 'UniswapV2Adapter__FactoryAlreadyRegistered' if the factory is already registered.
+     *         It sets the factory as registered and stores its fee structure.
      */
     function addFactory(address factory, uint48 feeNumerator, uint48 feeDenominator) external onlyGovernor {
         UniswapV2FactoryData storage factoryData = s_factoryData[factory];
