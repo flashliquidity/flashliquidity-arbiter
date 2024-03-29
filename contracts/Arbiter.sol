@@ -44,7 +44,6 @@ contract Arbiter is IArbiter, AutomationCompatibleInterface, StreamsLookupCompat
     error Arbiter__InvalidPrice();
     error Arbiter__StalenessTooHigh();
     error Arbiter__OutOfBound();
-    error Arbiter__StaticCallFailed();
 
     ///////////////////////
     // Types             //
