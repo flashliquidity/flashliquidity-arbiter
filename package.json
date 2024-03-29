@@ -21,8 +21,7 @@
   },
   "dependencies": {
     "@balancer-labs/v2-interfaces": "^0.4.0",
-    "@chainlink/contracts": "^0.8.0",
-    "@chainlink/contracts-ccip": "^0.7.6",
+    "@chainlink/contracts": "^1.0.0",
     "@openzeppelin/contracts": "^4.9.3",
     "@uniswap/v2-periphery": "^1.1.0-beta.0",
     "@uniswap/v3-core": "^1.0.1",

@@ -4,19 +4,19 @@ pragma solidity 0.8.19;
 
 import {AutomationCompatibleInterface} from
     "@chainlink/contracts/src/v0.8/automation/interfaces/AutomationCompatibleInterface.sol";
-import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
+import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 import {StreamsLookupCompatibleInterface} from
     "@chainlink/contracts/src/v0.8/automation/interfaces/StreamsLookupCompatibleInterface.sol";
+import {VerifierProxy} from "@chainlink/contracts/src/v0.8/llo-feeds/VerifierProxy.sol";
+import {FeeManager} from "@chainlink/contracts/src/v0.8/llo-feeds/FeeManager.sol";
+import {Common} from "@chainlink/contracts/src/v0.8/llo-feeds/libraries/Common.sol";
 import {IERC20, IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Babylonian} from "./libraries/Babylonian.sol";
-import {ChainlinkCommon} from "./libraries/ChainlinkCommon.sol";
 import {FullMath} from "./libraries/FullMath.sol";
 import {IArbiter} from "./interfaces/IArbiter.sol";
 import {IDexAdapter} from "./interfaces/IDexAdapter.sol";
-import {IFeeManager} from "./interfaces/IFeeManager.sol";
 import {IFlashLiquidityPair} from "./interfaces/IFlashLiquidityPair.sol";
-import {IVerifierProxy} from "./interfaces/IVerfierProxy.sol";
 import {Governable} from "flashliquidity-acs/contracts/Governable.sol";
 
 /**
@@ -44,6 +44,7 @@ contract Arbiter is IArbiter, AutomationCompatibleInterface, StreamsLookupCompat
     error Arbiter__InvalidPrice();
     error Arbiter__StalenessTooHigh();
     error Arbiter__OutOfBound();
+    error Arbiter__StaticCallFailed();
 
     ///////////////////////
     // Types             //
@@ -104,8 +105,8 @@ contract Arbiter is IArbiter, AutomationCompatibleInterface, StreamsLookupCompat
     uint24 public constant FL_FEE_NUMERATOR = 9994;
     /// @dev FlashLiquidity self-balancing pool fee denominator, set to 10000 for fee calculation.
     uint24 public constant FL_FEE_DENOMINATOR = 10000;
-    /// @dev Reference to the Chainlink Data Streams verifier proxy used for verifying signed reports.
-    IVerifierProxy private s_verifierProxy;
+    /// @dev The address of the Chainlink Data Streams verifier proxy used for verifying signed reports.
+    address private s_verifierProxy;
     /// @dev The address that is permissioned for flashLiquidityCall callback verification. Set to a default value.
     address private s_permissionedPairAddress = address(1);
     /// @dev The address of LINK token used to pay for Data Streams reports verification.
@@ -125,12 +126,13 @@ contract Arbiter is IArbiter, AutomationCompatibleInterface, StreamsLookupCompat
     // Events            //
     ///////////////////////
 
-    event VerifierProxyChanged(address indexed verifierProxy);
+    event VerifierProxyChanged(address verifierProxy);
+    event FeeManagerChanged(address feeManager);
     event PriceMaxStalenessChanged(uint256 newStaleness);
     event NewArbiterJob(address indexed selfBalancingPool, address indexed rewardVault);
     event ArbiterJobRemoved(address indexed selfBalancingPool);
-    event NewDexAdapter(address indexed adapter);
-    event DexAdapterRemoved(address indexed adapter);
+    event NewDexAdapter(address adapter);
+    event DexAdapterRemoved(address adapter);
     event DataFeedsChanged(address[] tokens, address[] dataFeeds);
     event DataStreamsChanged(address[] tokens, string[] feedIDs);
 
@@ -331,7 +333,7 @@ contract Arbiter is IArbiter, AutomationCompatibleInterface, StreamsLookupCompat
 
     /// @param verifierProxy The address of the new verifier proxy.
     function _setVerifierProxy(address verifierProxy) private {
-        s_verifierProxy = IVerifierProxy(verifierProxy);
+        s_verifierProxy = verifierProxy;
         emit VerifierProxyChanged(verifierProxy);
     }
 
@@ -350,14 +352,13 @@ contract Arbiter is IArbiter, AutomationCompatibleInterface, StreamsLookupCompat
      *         extracting crucial pricing information for token0 and token1 for further use.
      */
     function _verifyDataStreamReports(bytes[] memory signedReports) private returns (uint256 price0, uint256 price1) {
-        IVerifierProxy verifierProxy = s_verifierProxy;
+        VerifierProxy verifierProxy = VerifierProxy(s_verifierProxy);
         (, bytes memory report0Data) = abi.decode(signedReports[0], (bytes32[3], bytes));
         (, bytes memory report1Data) = abi.decode(signedReports[1], (bytes32[3], bytes));
-        IFeeManager feeManager = IFeeManager(address(verifierProxy.s_feeManager()));
-        address rewardManager = feeManager.i_rewardManager();
-        (ChainlinkCommon.Asset memory fee0,,) = feeManager.getFeeAndReward(address(this), report0Data, i_linkToken);
-        (ChainlinkCommon.Asset memory fee1,,) = feeManager.getFeeAndReward(address(this), report1Data, i_linkToken);
-        IERC20(i_linkToken).approve(address(rewardManager), fee0.amount + fee1.amount);
+        FeeManager feeManager = FeeManager(address(verifierProxy.s_feeManager()));
+        (Common.Asset memory fee0,,) = feeManager.getFeeAndReward(address(this), report0Data, i_linkToken);
+        (Common.Asset memory fee1,,) = feeManager.getFeeAndReward(address(this), report1Data, i_linkToken);
+        IERC20(i_linkToken).approve(address(feeManager.i_rewardManager()), fee0.amount + fee1.amount);
         bytes[] memory verifiedReportsData = verifierProxy.verifyBulk(signedReports, abi.encode(i_linkToken));
         BasicReport memory verifiedReport0 = abi.decode(verifiedReportsData[0], (BasicReport));
         BasicReport memory verifiedReport1 = abi.decode(verifiedReportsData[1], (BasicReport));
@@ -406,7 +407,7 @@ contract Arbiter is IArbiter, AutomationCompatibleInterface, StreamsLookupCompat
     }
 
     /**
-     * @dev Identifies the best pool for a swap operation based on the input token, output token, and input amount.
+     * @dev Identifies the best route for a swap operation based on the input token, output token, and input amount.
      *      This function iterates through a list of available dex adapters to find the one offering the best output amount for the swap.
      * @param tokenIn The address of the input token for the swap.
      * @param tokenOut The address of the output token from the swap.
@@ -415,7 +416,7 @@ contract Arbiter is IArbiter, AutomationCompatibleInterface, StreamsLookupCompat
      * @return adapterIndex The index of the dex adapter in the adapters array where the swap will yield the best output.
      * @return extraArgs Adapter specific encoded extra arguments, used for providing additional instructions or data required by the specific DEX adapter.
      */
-    function _findBestPool(address tokenIn, address tokenOut, uint256 amountIn)
+    function _findBestRoute(address tokenIn, address tokenOut, uint256 amountIn)
         private
         view
         returns (uint256 maxOutput, uint256 adapterIndex, bytes memory extraArgs)
@@ -461,7 +462,7 @@ contract Arbiter is IArbiter, AutomationCompatibleInterface, StreamsLookupCompat
                 (jobConfig.tokenOut, jobConfig.tokenIn, priceTokenOut, jobConfig.tokenOutDecimals);
         }
         (uint256 maxOutput, uint256 adapterIndex, bytes memory extraArgs) =
-            _findBestPool(jobConfig.tokenOut, jobConfig.tokenIn, rebalancing.amountOut);
+            _findBestRoute(jobConfig.tokenOut, jobConfig.tokenIn, rebalancing.amountOut);
         if (maxOutput > rebalancing.amountIn && rebalancing.amountIn > 0 && rebalancing.amountOut > 0) {
             uint256 bestProfitUSD =
                 (maxOutput - rebalancing.amountIn) * priceTokenIn / (10 ** jobConfig.tokenInDecimals);
@@ -579,6 +580,28 @@ contract Arbiter is IArbiter, AutomationCompatibleInterface, StreamsLookupCompat
             s_jobConfig[selfBalancingPool]
         );
         performData = abi.encode(values, arbiterCall);
+    }
+
+    /**
+     * @inheritdoc StreamsLookupCompatibleInterface
+     * @dev This function is triggered by Chainlink Data Streams if the reports retrieval process fail, fallback to Chainlink Data Feeds to checks if rebalancing is needed.
+     * @param extraData Encoded extra data, containing the address of the self-balancing pool.
+     * @return upkeepNeeded A boolean indicating whether a rebalancing operation is needed.
+     * @return performData Data to be used for the rebalancing operation if upkeep is needed.
+     */
+    function checkErrorHandler(uint256, bytes memory extraData)
+        external
+        view
+        returns (bool upkeepNeeded, bytes memory performData)
+    {
+        address selfBalancingPool = abi.decode(extraData, (address));
+        ArbiterJobConfig memory jobConfig = s_jobConfig[selfBalancingPool];
+        uint256 maxPriceStaleness = s_priceMaxStaleness;
+        uint256 priceTokenIn = _getPriceFromDataFeed(jobConfig.tokenIn, maxPriceStaleness);
+        uint256 priceTokenOut = _getPriceFromDataFeed(jobConfig.tokenOut, maxPriceStaleness);
+        ArbiterCall memory arbiterCall;
+        (upkeepNeeded, arbiterCall) = _isRebalancingNeeded(selfBalancingPool, priceTokenIn, priceTokenOut, jobConfig);
+        performData = abi.encode(new bytes[](0), arbiterCall);
     }
 
     /// @inheritdoc IArbiter
