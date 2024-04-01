@@ -8,7 +8,6 @@ import {ILBFactory} from "../interfaces/ILBFactory.sol";
 import {ILBPair} from "../interfaces/ILBPair.sol";
 import {Governable} from "flashliquidity-acs/contracts/Governable.sol";
 import {DexAdapter} from "./DexAdapter.sol";
-import "forge-std/console.sol";
 
 /**
  * @title TraderJoeLBAdapter
@@ -74,13 +73,17 @@ contract TraderJoeLBAdapter is DexAdapter, Governable {
         bool swapForY = ILBPair(pairInfo.LBPair).getTokenY() == tokenOut;
         IERC20(tokenIn).safeTransferFrom(msg.sender, pairInfo.LBPair, amountIn);
         bytes32 amountsOut = ILBPair(pairInfo.LBPair).swap(swapForY, to);
-        uint256 amountX;
-        uint256 amountY;
+        uint256 amountOut;
         assembly {
-            amountX := and(amountsOut, 0xffffffffffffffffffffffffffffffff)
-            amountY := shr(128, amountsOut)
+            switch swapForY 
+            case 0 {
+                amountOut := and(amountsOut, 0xffffffffffffffffffffffffffffffff)
+            }
+            default {
+                amountOut := shr(128, amountsOut)
+            }
         }
-        if (swapForY ? amountOutMin < amountY : amountOutMin < amountX) revert TraderJoeLBAdapter__InsufficientOutput();
+        if (amountOut < amountOutMin) revert TraderJoeLBAdapter__InsufficientOutput();
     }
 
     /// @inheritdoc DexAdapter
