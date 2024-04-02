@@ -43,7 +43,8 @@ interface IArbiter {
      * @param selfBalancingPool The address of the self-balancing pool to be monitored.
      * @param rewardVault The address of the reward vault where rebalancing profits will be deposited.
      * @param automationForwarder The address of the forwarder for the upkeep associated with this rebalancing job.
-     * @param minProfitUSD The minimum profit in USD (with 8 decimals) required to trigger a rebalancing operation.
+     * @param minProfitUSD The minimum profit in USD (with 8 decimals) below which the rebalancing operation reverts.
+     * @param triggerProfitUSD The minimum profit in USD (with 8 decimals) required to trigger a rebalancing operation.
      * @param forceToken0Decimals The decimal count to be used for token0, especially for non-standard ERC20 tokens that do not comply with the IERC20Metadata interface.
      * @param forceToken1Decimals The decimal count to be used for token1, especially for non-standard ERC20 tokens that do not comply with the IERC20Metadata interface.
      * @notice Set 'forceToken0Decimals' and 'forceToken1Decimals' to zero to default to the ERC20 decimal values provided by the decimals() function of each token.
@@ -53,6 +54,7 @@ interface IArbiter {
         address rewardVault,
         address automationForwarder,
         uint96 minProfitUSD,
+        uint96 triggerProfitUSD,
         uint8 forceToken0Decimals,
         uint8 forceToken1Decimals
     ) external;
@@ -107,12 +109,13 @@ interface IArbiter {
      * @dev Retrieves information about a specific Arbiter job associated with a self-balancing pool.
      * @param selfBalancingPool The address of the self-balancing pool associated with the Arbiter job to be retrieved.
      * @return rewardVault The address of the reward vault where rebalancing profits are deposited.
-     * @return minProfitUSD The minimum profit in USD (with 8 decimals) required to trigger a rebalancing operation.
+     * @return minProfitUSD The minimum profit in USD below which the rebalancing operation reverts.
+     * @return automationForwarder The address of the forwarder for the upkeep associated with this rebalancing job.
+     * @return triggerProfitUSD // The minimum profit in USD required to trigger a rebalancing operation (8 decimals).
      * @return token0 The address of token0 in the self-balancing pool.
-     * @return token1 The address of token1 in the self-balancing pool.
      * @return token0Decimals The number of decimals for token0.
+     * @return token1 The address of token1 in the self-balancing pool.
      * @return token1Decimals The number of decimals for token1.
-     * @param automationForwarder The address of the forwarder for the upkeep associated with this rebalancing job.
      * @notice This function provides detailed information about the configuration of a specific Arbiter job.
      */
     function getJobConfig(address selfBalancingPool)
@@ -121,11 +124,12 @@ interface IArbiter {
         returns (
             address rewardVault,
             uint96 minProfitUSD,
+            address automationForwarder,
+            uint96 triggerProfitUSD,
             address token0,
-            address token1,
             uint8 token0Decimals,
-            uint8 token1Decimals,
-            address automationForwarder
+            address token1,
+            uint8 token1Decimals
         );
 
     /// @param token The address of the token for which the Chainlink Data Feed address is to be retrieved.

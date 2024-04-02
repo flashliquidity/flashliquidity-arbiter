@@ -48,7 +48,7 @@ contract ArbiterIntegrationTest is Test, ArbiterHelpers {
         setDataFeed(arbiter, ETH, ethFeed);
         setDataFeed(arbiter, USDC, usdcFeed);
         IFlashLiquidityFactory(flFactory).setPairManager(flEthUsdc, address(arbiter));
-        arbiter.setArbiterJob(flEthUsdc, rewardVault, automationForwarder, 0, 0, 0);
+        arbiter.setArbiterJob(flEthUsdc, rewardVault, automationForwarder, 0, 0, 0, 0);
         uniV2Adapter.addFactory(uniV2ForkFactory, 997, 1000);
         uniV3Adapter.addFactory(uniV3Factory, uniV3Quoter, uniV3Fees);
         vm.stopPrank();

@@ -37,6 +37,7 @@ contract Arbiter is IArbiter, AutomationCompatibleInterface, StreamsLookupCompat
     error Arbiter__NotManager();
     error Arbiter__InconsistentParamsLength();
     error Arbiter__NotPermissionedPair();
+    error Arbiter__InvalidMinProfit();
     error Arbiter__InsufficentProfit();
     error Arbiter__NotFromArbiter();
     error Arbiter__NotFromForwarder();
@@ -51,12 +52,13 @@ contract Arbiter is IArbiter, AutomationCompatibleInterface, StreamsLookupCompat
 
     struct ArbiterJobConfig {
         address rewardVault; // Address of the vault where rebalancing profits are deposited.
-        uint96 minProfitUSD; // Minimum profit in USD required to trigger a rebalancing operation (8 decimals).
+        uint96 minProfitUSD; // Minimum profit in USD below which the rebalancing operation reverts (8 decimals).
+        address automationForwarder; // Intermediary between the Chainlink Automation Registry and the Arbiter.
+        uint96 triggerProfitUSD; // Minimum profit in USD required to trigger a rebalancing operation (8 decimals).
         address tokenIn; // Address of the input token for the rebalancing trade.
-        address tokenOut; // Address of the output token for the rebalancing trade.
         uint8 tokenInDecimals; // Decimal count of the input token.
+        address tokenOut; // Address of the output token for the rebalancing trade.
         uint8 tokenOutDecimals; // Decimal count of the output token.
-        address automationForwarder; // Intermediary between the Chainlink Automation Registry and the Arbiter
     }
 
     struct ArbiterCall {
@@ -193,6 +195,7 @@ contract Arbiter is IArbiter, AutomationCompatibleInterface, StreamsLookupCompat
         address rewardVault,
         address automationForwarder,
         uint96 minProfitUSD,
+        uint96 triggerProfitUSD,
         uint8 forceToken0Decimals,
         uint8 forceToken1Decimals
     ) external onlyGovernor {
@@ -203,14 +206,18 @@ contract Arbiter is IArbiter, AutomationCompatibleInterface, StreamsLookupCompat
         if (address(s_dataFeeds[token0]) == address(0) || address(s_dataFeeds[token1]) == address(0)) {
             revert Arbiter__DataFeedNotSet();
         }
+        if (minProfitUSD < triggerProfitUSD - triggerProfitUSD / 10 || minProfitUSD > triggerProfitUSD) {
+            revert Arbiter__InvalidMinProfit();
+        }
         s_jobConfig[selfBalancingPool] = ArbiterJobConfig({
             rewardVault: rewardVault,
             minProfitUSD: minProfitUSD,
+            automationForwarder: automationForwarder,
+            triggerProfitUSD: triggerProfitUSD,
             tokenIn: token0,
-            tokenOut: token1,
             tokenInDecimals: forceToken0Decimals > 0 ? forceToken0Decimals : IERC20Metadata(token0).decimals(),
-            tokenOutDecimals: forceToken1Decimals > 0 ? forceToken1Decimals : IERC20Metadata(token1).decimals(),
-            automationForwarder: automationForwarder
+            tokenOut: token1,
+            tokenOutDecimals: forceToken1Decimals > 0 ? forceToken1Decimals : IERC20Metadata(token1).decimals()
         });
         emit NewArbiterJob(selfBalancingPool, rewardVault);
     }
@@ -465,7 +472,7 @@ contract Arbiter is IArbiter, AutomationCompatibleInterface, StreamsLookupCompat
         if (maxOutput > rebalancing.amountIn && rebalancing.amountIn > 0 && rebalancing.amountOut > 0) {
             uint256 bestProfitUSD =
                 (maxOutput - rebalancing.amountIn) * priceTokenIn / (10 ** jobConfig.tokenInDecimals);
-            if (bestProfitUSD >= jobConfig.minProfitUSD) {
+            if (bestProfitUSD >= jobConfig.triggerProfitUSD) {
                 rebalancingNeeded = true;
                 arbiterCall = ArbiterCall({
                     selfBalancingPool: selfBalancingPool,
@@ -617,17 +624,18 @@ contract Arbiter is IArbiter, AutomationCompatibleInterface, StreamsLookupCompat
     function getJobConfig(address selfBalancingPool)
         external
         view
-        returns (address, uint96, address, address, uint8, uint8, address)
+        returns (address, uint96, address, uint96, address, uint8, address, uint8)
     {
         ArbiterJobConfig memory jobConfig = s_jobConfig[selfBalancingPool];
         return (
             jobConfig.rewardVault,
             jobConfig.minProfitUSD,
+            jobConfig.automationForwarder,
+            jobConfig.triggerProfitUSD,
             jobConfig.tokenIn,
-            jobConfig.tokenOut,
             jobConfig.tokenInDecimals,
-            jobConfig.tokenOutDecimals,
-            jobConfig.automationForwarder
+            jobConfig.tokenOut,
+            jobConfig.tokenOutDecimals
         );
     }
 

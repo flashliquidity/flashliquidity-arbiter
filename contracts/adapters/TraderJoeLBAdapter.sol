@@ -75,13 +75,9 @@ contract TraderJoeLBAdapter is DexAdapter, Governable {
         bytes32 amountsOut = ILBPair(pairInfo.LBPair).swap(swapForY, to);
         uint256 amountOut;
         assembly {
-            switch swapForY 
-            case 0 {
-                amountOut := and(amountsOut, 0xffffffffffffffffffffffffffffffff)
-            }
-            default {
-                amountOut := shr(128, amountsOut)
-            }
+            switch swapForY
+            case 0 { amountOut := and(amountsOut, 0xffffffffffffffffffffffffffffffff) }
+            default { amountOut := shr(128, amountsOut) }
         }
         if (amountOut < amountOutMin) revert TraderJoeLBAdapter__InsufficientOutput();
     }
