@@ -32,12 +32,11 @@ contract Arbiter is IArbiter, AutomationCompatibleInterface, StreamsLookupCompat
     // Errors            //
     ///////////////////////
 
-    error Arbiter__ZeroProfit();
     error Arbiter__InvalidPool();
     error Arbiter__NotManager();
     error Arbiter__InconsistentParamsLength();
     error Arbiter__NotPermissionedPair();
-    error Arbiter__InvalidMinProfit();
+    error Arbiter__InvalidProfitToReservesRatio();
     error Arbiter__InsufficentProfit();
     error Arbiter__NotFromArbiter();
     error Arbiter__NotFromForwarder();
@@ -52,9 +51,9 @@ contract Arbiter is IArbiter, AutomationCompatibleInterface, StreamsLookupCompat
 
     struct ArbiterJobConfig {
         address rewardVault; // Address of the vault where rebalancing profits are deposited.
-        uint96 minProfitUSD; // Minimum profit in USD below which the rebalancing operation reverts (8 decimals).
+        uint96 reserveToMinProfit; // The minimum ratio between reserve and profit below which the rebalancing operation reverts.
         address automationForwarder; // Intermediary between the Chainlink Automation Registry and the Arbiter.
-        uint96 triggerProfitUSD; // Minimum profit in USD required to trigger a rebalancing operation (8 decimals).
+        uint96 reserveToTriggerProfit; // The minimum ratio between reserve and profit required to trigger a rebalancing operation.
         address tokenIn; // Address of the input token for the rebalancing trade.
         uint8 tokenInDecimals; // Decimal count of the input token.
         address tokenOut; // Address of the output token for the rebalancing trade.
@@ -194,8 +193,8 @@ contract Arbiter is IArbiter, AutomationCompatibleInterface, StreamsLookupCompat
         address selfBalancingPool,
         address rewardVault,
         address automationForwarder,
-        uint96 minProfitUSD,
-        uint96 triggerProfitUSD,
+        uint96 reserveToMinProfit,
+        uint96 reserveToTriggerProfit,
         uint8 forceToken0Decimals,
         uint8 forceToken1Decimals
     ) external onlyGovernor {
@@ -206,14 +205,17 @@ contract Arbiter is IArbiter, AutomationCompatibleInterface, StreamsLookupCompat
         if (address(s_dataFeeds[token0]) == address(0) || address(s_dataFeeds[token1]) == address(0)) {
             revert Arbiter__DataFeedNotSet();
         }
-        if (minProfitUSD < triggerProfitUSD - triggerProfitUSD / 10 || minProfitUSD > triggerProfitUSD) {
-            revert Arbiter__InvalidMinProfit();
+        if (reserveToMinProfit == 0 || reserveToTriggerProfit == 0 || reserveToMinProfit > reserveToTriggerProfit) {
+            revert Arbiter__InvalidProfitToReservesRatio();
+        }
+        if (reserveToMinProfit < reserveToTriggerProfit - reserveToTriggerProfit / 10) {
+            revert Arbiter__InvalidProfitToReservesRatio();
         }
         s_jobConfig[selfBalancingPool] = ArbiterJobConfig({
             rewardVault: rewardVault,
-            minProfitUSD: minProfitUSD,
+            reserveToMinProfit: reserveToMinProfit,
             automationForwarder: automationForwarder,
-            triggerProfitUSD: triggerProfitUSD,
+            reserveToTriggerProfit: reserveToTriggerProfit,
             tokenIn: token0,
             tokenInDecimals: forceToken0Decimals > 0 ? forceToken0Decimals : IERC20Metadata(token0).decimals(),
             tokenOut: token1,
@@ -282,9 +284,9 @@ contract Arbiter is IArbiter, AutomationCompatibleInterface, StreamsLookupCompat
      * 3. Prepares callback data for the swap operation.
      * 4. Sets the permissioned pair address to the self-balancing pool address for validation.
      * 5. Determines the input token, initial amounts for the swap, and price of the token in.
-     * 6. Verifies data stream reports or retrieves the price from the data feed, depending on the presence of signed reports.
+     * 6. Verifies data stream reports if present.
      * 7. Performs the swap operation via the self-balancing pool.
-     * 8. Calculates the profit in USD and reverts if it's below the configured minimum profit threshold.
+     * 8. Calculates the profit and reverts if it's below the configured minimum reserve to profit ratio.
      * 9. Resets the permissioned pair address and transfers the profit to the reward vault.
      *
      * @notice This function is crucial for the automated rebalancing of pools and is triggered by Chainlink Automation.
@@ -294,6 +296,7 @@ contract Arbiter is IArbiter, AutomationCompatibleInterface, StreamsLookupCompat
         (bytes[] memory signedReports, ArbiterCall memory call) = abi.decode(performData, (bytes[], ArbiterCall));
         ArbiterJobConfig memory jobConfig = s_jobConfig[call.selfBalancingPool];
         if (msg.sender != jobConfig.automationForwarder) revert Arbiter__NotFromForwarder();
+        if (signedReports.length != 0) _verifyDataStreamReports(signedReports);
         CallbackData memory callbackData = CallbackData({
             selfBalancingPool: call.selfBalancingPool,
             token0: jobConfig.tokenIn,
@@ -305,31 +308,17 @@ contract Arbiter is IArbiter, AutomationCompatibleInterface, StreamsLookupCompat
             zeroToOne: call.zeroToOne
         });
         s_permissionedPairAddress = call.selfBalancingPool;
-        IERC20 tokenIn;
-        uint256 amount0;
-        uint256 amount1;
-        uint256 profitTokenDecimals;
-        (tokenIn, amount0, amount1, profitTokenDecimals) = call.zeroToOne
-            ? (IERC20(jobConfig.tokenIn), uint256(0), call.amountOut, jobConfig.tokenInDecimals)
-            : (IERC20(jobConfig.tokenOut), call.amountOut, uint256(0), jobConfig.tokenOutDecimals);
-        uint256 priceTokenIn;
-        if (signedReports.length != 0) {
-            if (call.zeroToOne) {
-                (priceTokenIn,) = _verifyDataStreamReports(signedReports);
-            } else {
-                (, priceTokenIn) = _verifyDataStreamReports(signedReports);
-            }
-            /// reduce to 8 decimals (consistent with data feeds and minProfitUSD)
-            priceTokenIn /= 10e10;
-        } else {
-            priceTokenIn = _getPriceFromDataFeed(address(tokenIn), s_priceMaxStaleness);
-        }
+        (IERC20 tokenIn, uint256 amount0, uint256 amount1) = call.zeroToOne
+            ? (IERC20(jobConfig.tokenIn), uint256(0), call.amountOut)
+            : (IERC20(jobConfig.tokenOut), call.amountOut, uint256(0));
         uint256 balanceBefore = tokenIn.balanceOf(address(this));
+        (uint256 reserve0, uint256 reserve1,) = IFlashLiquidityPair(call.selfBalancingPool).getReserves();
         IFlashLiquidityPair(call.selfBalancingPool).swap(amount0, amount1, address(this), abi.encode(callbackData));
         s_permissionedPairAddress = address(1);
         uint256 profit = (tokenIn.balanceOf(address(this)) - balanceBefore);
-        uint256 profitUSD = profit * priceTokenIn / (10 ** profitTokenDecimals);
-        if (profitUSD < jobConfig.minProfitUSD) revert Arbiter__InsufficentProfit();
+        uint256 minProfit = call.zeroToOne ? reserve0 : reserve1;
+        minProfit = minProfit / jobConfig.reserveToMinProfit;
+        if (profit < minProfit) revert Arbiter__InsufficentProfit();
         tokenIn.safeTransfer(jobConfig.rewardVault, profit);
     }
 
@@ -350,14 +339,11 @@ contract Arbiter is IArbiter, AutomationCompatibleInterface, StreamsLookupCompat
     }
 
     /**
-     * @dev Verifies an array of two encoded Chainlink Data Streams reports and extracts the prices of two tokens from them.
+     * @dev Verifies an array of two encoded Chainlink Data Streams reports.
      * @param signedReports An array of exactly two encoded Chainlink Data Streams reports that need to be verified.
-     * @return price0 The price of token0 as extracted from the first report.
-     * @return price1 The price of token1 as extracted from the second report.
-     * @notice This function is specifically designed to handle and validate a pair of Chainlink Data Streams reports,
-     *         extracting crucial pricing information for token0 and token1 for further use.
+     * @notice This function is specifically designed to handle and validate a pair of Chainlink Data Streams reports.
      */
-    function _verifyDataStreamReports(bytes[] memory signedReports) private returns (uint256 price0, uint256 price1) {
+    function _verifyDataStreamReports(bytes[] memory signedReports) private {
         VerifierProxy verifierProxy = VerifierProxy(s_verifierProxy);
         (, bytes memory report0Data) = abi.decode(signedReports[0], (bytes32[3], bytes));
         (, bytes memory report1Data) = abi.decode(signedReports[1], (bytes32[3], bytes));
@@ -365,11 +351,7 @@ contract Arbiter is IArbiter, AutomationCompatibleInterface, StreamsLookupCompat
         (Common.Asset memory fee0,,) = feeManager.getFeeAndReward(address(this), report0Data, i_linkToken);
         (Common.Asset memory fee1,,) = feeManager.getFeeAndReward(address(this), report1Data, i_linkToken);
         IERC20(i_linkToken).approve(address(feeManager.i_rewardManager()), fee0.amount + fee1.amount);
-        bytes[] memory verifiedReportsData = verifierProxy.verifyBulk(signedReports, abi.encode(i_linkToken));
-        BasicReport memory verifiedReport0 = abi.decode(verifiedReportsData[0], (BasicReport));
-        BasicReport memory verifiedReport1 = abi.decode(verifiedReportsData[1], (BasicReport));
-        if (verifiedReport0.price <= int192(0) || verifiedReport1.price <= int192(0)) revert Arbiter__InvalidPrice();
-        return (uint192(verifiedReport0.price), uint192(verifiedReport1.price));
+        verifierProxy.verifyBulk(signedReports, abi.encode(i_linkToken));
     }
 
     /////////////////////////////
@@ -378,9 +360,10 @@ contract Arbiter is IArbiter, AutomationCompatibleInterface, StreamsLookupCompat
 
     /**
      * @dev Calculates the necessary trade information for rebalancing a given self-balancing pool based on the prices of token0 and token1.
-     * @param selfBalancingPool The address of the self-balancing pool for which the rebalancing trade needs to be computed.
      * @param price0 The price of token0 in USD.
      * @param price1 The price of token1 in USD.
+     * @param reserveIn The self-balancing pool reserve of token0.
+     * @param reserveOut The self-balancing pool reserve of token1.
      * @param token0Decimals The number of decimals of token0.
      * @param token1Decimals The number of decimals of token1.
      * @return tradeInfo A struct containing the information for the rebalancing trade, including amounts to trade in and out.
@@ -388,16 +371,16 @@ contract Arbiter is IArbiter, AutomationCompatibleInterface, StreamsLookupCompat
      *         It takes into account the current reserves, prices, and decimal precision of the tokens.
      */
     function _computeRebalancingTrade(
-        address selfBalancingPool,
         uint256 price0,
         uint256 price1,
+        uint256 reserveIn,
+        uint256 reserveOut,
         uint8 token0Decimals,
         uint8 token1Decimals
-    ) private view returns (RebalancingInfo memory tradeInfo) {
+    ) private pure returns (RebalancingInfo memory tradeInfo) {
         (uint256 rateTokenIn, uint256 rateTokenOut) = price0 < price1
             ? (10 ** token0Decimals, FullMath.mulDiv(price0, 10 ** token1Decimals, price1))
             : (FullMath.mulDiv(price1, 10 ** token0Decimals, price0), 10 ** token1Decimals);
-        (uint256 reserveIn, uint256 reserveOut,) = IFlashLiquidityPair(selfBalancingPool).getReserves();
         tradeInfo.zeroToOne = FullMath.mulDiv(reserveIn, rateTokenOut, reserveOut) < rateTokenIn;
         if (!tradeInfo.zeroToOne) {
             (reserveIn, reserveOut, rateTokenIn, rateTokenOut) = (reserveOut, reserveIn, rateTokenOut, rateTokenIn);
@@ -406,7 +389,7 @@ contract Arbiter is IArbiter, AutomationCompatibleInterface, StreamsLookupCompat
             FullMath.mulDiv(reserveIn * reserveOut, rateTokenIn * FL_FEE_DENOMINATOR, rateTokenOut * FL_FEE_NUMERATOR)
         );
         uint256 rightSide = reserveIn * FL_FEE_DENOMINATOR / FL_FEE_NUMERATOR;
-        if (leftSide <= rightSide || reserveIn == 0 || reserveOut == 0) revert Arbiter__ZeroProfit();
+        if (leftSide <= rightSide || reserveIn == 0 || reserveOut == 0) return tradeInfo;
         tradeInfo.amountIn = leftSide - rightSide;
         uint256 amountInWithFee = tradeInfo.amountIn * FL_FEE_NUMERATOR;
         tradeInfo.amountOut = amountInWithFee * reserveOut / ((reserveIn * FL_FEE_DENOMINATOR) + amountInWithFee);
@@ -460,19 +443,21 @@ contract Arbiter is IArbiter, AutomationCompatibleInterface, StreamsLookupCompat
         uint256 priceTokenOut,
         ArbiterJobConfig memory jobConfig
     ) private view returns (bool rebalancingNeeded, ArbiterCall memory arbiterCall) {
+        (uint256 reserveIn, uint256 reserveOut,) = IFlashLiquidityPair(selfBalancingPool).getReserves();
         RebalancingInfo memory rebalancing = _computeRebalancingTrade(
-            selfBalancingPool, priceTokenIn, priceTokenOut, jobConfig.tokenInDecimals, jobConfig.tokenOutDecimals
+            priceTokenIn, priceTokenOut, reserveIn, reserveOut, jobConfig.tokenInDecimals, jobConfig.tokenOutDecimals
         );
         if (!rebalancing.zeroToOne) {
             (jobConfig.tokenIn, jobConfig.tokenOut, priceTokenIn, jobConfig.tokenInDecimals) =
                 (jobConfig.tokenOut, jobConfig.tokenIn, priceTokenOut, jobConfig.tokenOutDecimals);
         }
+        if (rebalancing.amountIn == 0 || rebalancing.amountOut == 0) return (false, arbiterCall);
         (uint256 maxOutput, uint256 adapterIndex, bytes memory extraArgs) =
             _findBestRoute(jobConfig.tokenOut, jobConfig.tokenIn, rebalancing.amountOut);
-        if (maxOutput > rebalancing.amountIn && rebalancing.amountIn > 0 && rebalancing.amountOut > 0) {
-            uint256 bestProfitUSD =
-                (maxOutput - rebalancing.amountIn) * priceTokenIn / (10 ** jobConfig.tokenInDecimals);
-            if (bestProfitUSD >= jobConfig.triggerProfitUSD) {
+        if (maxOutput > rebalancing.amountIn) {
+            uint256 profitTrigger = rebalancing.zeroToOne ? reserveIn : reserveOut;
+            profitTrigger = profitTrigger / jobConfig.reserveToTriggerProfit;
+            if (maxOutput - rebalancing.amountIn >= profitTrigger) {
                 rebalancingNeeded = true;
                 arbiterCall = ArbiterCall({
                     selfBalancingPool: selfBalancingPool,
@@ -560,7 +545,7 @@ contract Arbiter is IArbiter, AutomationCompatibleInterface, StreamsLookupCompat
      * 2. Decodes the first two elements of `values` to get the reports for tokenIn and tokenOut.
      * 3. Checks for valid prices in the reports. If any price is non-positive, it reverts with 'Arbiter__InvalidPrice'.
      * 4. Retrieves the job configuration for the specified pool.
-     * 5. Converts the prices from the reports to uint256 and checks if rebalancing is needed based on these prices and the job configuration.
+     * 5. Extract the prices from the reports and checks if rebalancing is needed based on these prices and the job configuration.
      *
      * @notice This function is triggered by Chainlink Data Streams and is used to automate the rebalancing of pools based on external data.
      * @notice It ensures that the pool is rebalanced only when the conditions defined in the job configuration are met.
@@ -629,9 +614,9 @@ contract Arbiter is IArbiter, AutomationCompatibleInterface, StreamsLookupCompat
         ArbiterJobConfig memory jobConfig = s_jobConfig[selfBalancingPool];
         return (
             jobConfig.rewardVault,
-            jobConfig.minProfitUSD,
+            jobConfig.reserveToMinProfit,
             jobConfig.automationForwarder,
-            jobConfig.triggerProfitUSD,
+            jobConfig.reserveToTriggerProfit,
             jobConfig.tokenIn,
             jobConfig.tokenInDecimals,
             jobConfig.tokenOut,

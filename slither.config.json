@@ -4,6 +4,6 @@
   "exclude_medium": false,
   "exclude_high": false,
   "disable_color": false,
-  "filter_paths": "(test/|lib/|contracts/libraries/)",
+  "filter_paths": "(test/|lib/|node_modules/|contracts/libraries/)",
   "legacy_ast": false
 }

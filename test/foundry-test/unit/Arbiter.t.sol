@@ -103,45 +103,55 @@ contract ArbiterTest is Test, ArbiterHelpers {
     }
 
     function test__Arbiter_setArbiterJob() public {
-        uint96 minProfitUSD = 1000;
-        uint96 triggerProfitUSD = 1050;
+        uint96 reserveToMinProfitRatio = 1000;
+        uint96 reserveToTriggerProfitRatio = 1050;
         vm.expectRevert(Governable.Governable__NotAuthorized.selector);
-        arbiter.setArbiterJob(address(pairMock), governor, forwarder, minProfitUSD, triggerProfitUSD, 0, 0);
+        arbiter.setArbiterJob(
+            address(pairMock), governor, forwarder, reserveToMinProfitRatio, reserveToTriggerProfitRatio, 0, 0
+        );
         vm.startPrank(governor);
         vm.expectRevert(Arbiter.Arbiter__NotManager.selector);
-        arbiter.setArbiterJob(address(pairMock), governor, forwarder, minProfitUSD, triggerProfitUSD, 0, 0);
+        arbiter.setArbiterJob(
+            address(pairMock), governor, forwarder, reserveToMinProfitRatio, reserveToTriggerProfitRatio, 0, 0
+        );
         pairMock.setManager(address(arbiter));
         vm.expectRevert(Arbiter.Arbiter__DataFeedNotSet.selector);
-        arbiter.setArbiterJob(address(pairMock), governor, forwarder, minProfitUSD, triggerProfitUSD, 0, 0);
+        arbiter.setArbiterJob(
+            address(pairMock), governor, forwarder, reserveToMinProfitRatio, reserveToTriggerProfitRatio, 0, 0
+        );
         setDataFeed(arbiter, address(linkToken), bob);
         setDataFeed(arbiter, address(mockToken), rob);
-        vm.expectRevert(Arbiter.Arbiter__InvalidMinProfit.selector);
-        arbiter.setArbiterJob(address(pairMock), governor, forwarder, minProfitUSD, 1112, 0, 0);
-        arbiter.setArbiterJob(address(pairMock), governor, forwarder, minProfitUSD, triggerProfitUSD, 0, 0);
+        vm.expectRevert(Arbiter.Arbiter__InvalidProfitToReservesRatio.selector);
+        arbiter.setArbiterJob(address(pairMock), governor, forwarder, reserveToMinProfitRatio, 1112, 0, 0);
+        arbiter.setArbiterJob(
+            address(pairMock), governor, forwarder, reserveToMinProfitRatio, reserveToTriggerProfitRatio, 0, 0
+        );
         (
             address rewardVault,
-            uint96 jobMinProfitUSD,
+            uint96 jobMinProfitRatio,
             address automationForwarder,
-            uint96 jobTriggerProfitUSD,
+            uint96 jobTriggerProfitRatio,
             address token0,
             uint8 token0Decimals,
             address token1,
             uint8 token1Decimals
         ) = arbiter.getJobConfig(address(pairMock));
         assertEq(rewardVault, governor);
-        assertEq(jobMinProfitUSD, minProfitUSD);
+        assertEq(jobMinProfitRatio, reserveToMinProfitRatio);
         assertEq(automationForwarder, forwarder);
-        assertEq(jobTriggerProfitUSD, triggerProfitUSD);
+        assertEq(jobTriggerProfitRatio, reserveToTriggerProfitRatio);
         assertEq(token0, address(linkToken));
         assertEq(token1, address(mockToken));
         assertEq(token0Decimals, linkToken.decimals());
         assertEq(token1Decimals, mockToken.decimals());
-        arbiter.setArbiterJob(address(pairMock), governor, bob, minProfitUSD, triggerProfitUSD, 8, 0);
+        arbiter.setArbiterJob(
+            address(pairMock), governor, bob, reserveToMinProfitRatio, reserveToTriggerProfitRatio, 8, 0
+        );
         (
             rewardVault,
-            jobMinProfitUSD,
+            jobMinProfitRatio,
             automationForwarder,
-            jobTriggerProfitUSD,
+            jobTriggerProfitRatio,
             token0,
             token0Decimals,
             token1,
