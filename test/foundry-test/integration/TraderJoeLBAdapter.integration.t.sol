@@ -28,6 +28,8 @@ contract TraderJoeLBAdapterIntegrationTest is Test {
         (address factory) = abi.decode(extraArgs, (address));
         assertTrue(maxOutput > 0);
         assertEq(factory, lbFactory);
+        (uint256 amountOut) = adapter.getOutputFromArgs(address(WETH), USDC, 1 ether, extraArgs);
+        assertEq(maxOutput, amountOut);
     }
 
     function testIntegration__TraderJoeLBAdapter_swap() public {

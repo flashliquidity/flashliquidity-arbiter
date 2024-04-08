@@ -69,4 +69,26 @@ abstract contract DexAdapter is IDexAdapter {
         if (tokenIn == tokenOut || amountIn == 0) return (0, new bytes(0));
         (maxOutput, extraArgs) = _getMaxOutput(tokenIn, tokenOut, amountIn);
     }
+
+    /**
+     * @param tokenIn The address of the input token.
+     * @param tokenOut The address of the output token.
+     * @param amountIn The amount of input tokens to be swapped.
+     * @param extraArgs Adapter specific encoded extra arguments, used for providing additional instructions or data required by the specific DEX adapter.
+     */
+    function _getOutputFromArgs(address tokenIn, address tokenOut, uint256 amountIn, bytes memory extraArgs)
+        internal
+        view
+        virtual
+        returns (uint256 amountOut);
+
+    /// @inheritdoc IDexAdapter
+    function getOutputFromArgs(address tokenIn, address tokenOut, uint256 amountIn, bytes memory extraArgs)
+        external
+        view
+        returns (uint256 amountOut)
+    {
+        if (tokenIn == tokenOut || amountIn == 0) return 0;
+        amountOut = _getOutputFromArgs(tokenIn, tokenOut, amountIn, extraArgs);
+    }
 }

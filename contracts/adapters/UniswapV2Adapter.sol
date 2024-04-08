@@ -118,6 +118,20 @@ contract UniswapV2Adapter is DexAdapter, Governable {
         }
     }
 
+    function _getOutputFromArgs(address tokenIn, address tokenOut, uint256 amountIn, bytes memory extraArgs)
+        internal
+        view
+        override
+        returns (uint256 amountOut)
+    {
+        IUniswapV2Factory factory = IUniswapV2Factory(abi.decode(extraArgs, (address)));
+        UniswapV2FactoryData memory factoryData = s_factoryData[address(factory)];
+        if (!factoryData.isRegistered) return 0;
+        address pool = factory.getPair(tokenIn, tokenOut);
+        if (pool == address(0)) return 0;
+        return _getAmountOut(pool, amountIn, factoryData.feeNumerator, factoryData.feeDenominator, tokenIn < tokenOut);
+    }
+
     /**
      * @dev Calculates the amount of output tokens that can be obtained from a given input amount for a swap operation in a Uniswap V2 pool, considering the pool's reserves and fee structure.
      * @param targetPool The address of the Uniswap V2 pool.

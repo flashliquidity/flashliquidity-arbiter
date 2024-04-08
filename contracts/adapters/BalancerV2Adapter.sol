@@ -227,6 +227,27 @@ contract BalancerV2Adapter is DexAdapter, Governable {
         }
     }
 
+    /// @inheritdoc DexAdapter
+    function _getOutputFromArgs(address tokenIn, address tokenOut, uint256 amountIn, bytes memory extraArgs)
+        internal
+        view
+        override
+        returns (uint256 amountOut)
+    {
+        (address vault, uint256 poolIndex) = abi.decode(extraArgs, (address, uint256));
+        address pool = tokenIn < tokenOut
+            ? s_tokensToVaultPools[tokenIn][tokenOut][vault][poolIndex]
+            : s_tokensToVaultPools[tokenOut][tokenIn][vault][poolIndex];
+        if (pool == address(0)) return 0;
+        IPoolSwapStructs.SwapRequest memory swapRequest;
+        swapRequest.kind = IVault.SwapKind.GIVEN_IN;
+        swapRequest.tokenIn = IERC20Balancer(tokenIn);
+        swapRequest.tokenOut = IERC20Balancer(tokenOut);
+        swapRequest.amount = amountIn;
+        swapRequest.poolId = IBasePool(pool).getPoolId();
+        return _getAmountOut(swapRequest, vault, pool);
+    }
+
     /**
      * @dev Calculates the output amount for a given swap request in a Balancer V2 pool.
      * @param swapRequest A struct containing details about the swap request, including the token in, token out, and the amount in.

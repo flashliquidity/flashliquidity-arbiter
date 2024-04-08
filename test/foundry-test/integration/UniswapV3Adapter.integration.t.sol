@@ -31,6 +31,8 @@ contract UniswapV3AdapterIntegrationTest is Test {
         assertTrue(maxOutput > 0);
         assertEq(factory, uniV3Factory);
         assertTrue(fee == uniV3Fees[0] || fee == uniV3Fees[1]);
+        (uint256 amountOut) = adapter.getOutputFromArgs(address(WETH), USDC, 1 ether, extraArgs);
+        assertEq(maxOutput, amountOut);
     }
 
     function testIntegration__UniswapV3Adapter_swap() public {

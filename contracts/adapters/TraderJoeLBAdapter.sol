@@ -116,6 +116,22 @@ contract TraderJoeLBAdapter is DexAdapter, Governable {
         }
     }
 
+    /// @inheritdoc DexAdapter
+    function _getOutputFromArgs(address tokenIn, address tokenOut, uint256 amountIn, bytes memory extraArgs)
+        internal
+        view
+        override
+        returns (uint256 amountOut)
+    {
+        (address factory, uint24 binStep) = abi.decode(extraArgs, (address, uint24));
+        if (!s_isRegisteredFactory[factory]) return 0;
+        ILBFactory.LBPairInformation memory pairInfo =
+            ILBFactory(factory).getLBPairInformation(IERC20(tokenIn), IERC20(tokenOut), binStep);
+        ILBPair pair = ILBPair(pairInfo.LBPair);
+        bool swapForY = pair.getTokenY() == tokenOut;
+        return _getAmountOut(pair, amountIn, swapForY);
+    }
+
     /**
      * @dev Calculates the expected output token amount for a given input amount in a swap.
      * @param pair The ILBPair of the pair contract from the Liquidity Book.

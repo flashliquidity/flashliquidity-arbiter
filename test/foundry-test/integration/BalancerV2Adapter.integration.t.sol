@@ -36,6 +36,8 @@ contract BalancerV2AdapterIntegrationTest is Test {
         assertTrue(maxOutput > 0);
         assertEq(vault, balancerV2Vault);
         assertEq(poolIndex, 0);
+        (uint256 amountOut) = adapter.getOutputFromArgs(address(WETH), WBTC, 1 ether, extraArgs);
+        assertEq(maxOutput, amountOut);
     }
 
     function testIntegration__BalancerV2Adapter_swap() public {

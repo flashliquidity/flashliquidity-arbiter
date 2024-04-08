@@ -164,6 +164,30 @@ contract AlgebraAdapter is DexAdapter, Governable, IAlgebraSwapCallback {
         }
     }
 
+    /// @inheritdoc DexAdapter
+    function _getOutputFromArgs(address tokenIn, address tokenOut, uint256 amountIn, bytes memory extraArgs)
+        internal
+        view
+        override
+        returns (uint256 amountOut)
+    {
+        (address factory) = abi.decode(extraArgs, (address));
+        AlgebraFactoryData memory factoryData = s_factoryData[factory];
+        if (!factoryData.isRegistered) return 0;
+        bytes memory encodedQuoterParams = abi.encodeWithSelector(
+            IAlgebraQuoter.quoteExactInputSingle.selector,
+            IAlgebraQuoter.QuoteExactInputSingleParams({
+                tokenIn: tokenIn,
+                tokenOut: tokenOut,
+                amountIn: amountIn,
+                sqrtPriceLimitX96: 0
+            })
+        );
+        (bool success, bytes memory returnData) = factoryData.quoter.staticcall(encodedQuoterParams);
+        if (!success) return 0;
+        return abi.decode(returnData, (uint256));
+    }
+
     /**
      * @dev Retrieves the details of a specific factory, identified by its index.
      * @param factoryIndex The index of the factory in the 's_factories' array.

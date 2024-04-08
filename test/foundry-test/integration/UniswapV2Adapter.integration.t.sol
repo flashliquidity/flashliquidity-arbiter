@@ -24,8 +24,10 @@ contract UniswapV2AdapterIntegrationTest is Test {
     }
 
     function testIntegration__UniswapV2Adapter_getMaxOutput() public {
-        (uint256 maxOutput, bytes memory extraArgs) = adapter.getMaxOutput(address(WETH), USDC, 1000000000);
+        (uint256 maxOutput, bytes memory extraArgs) = adapter.getMaxOutput(address(WETH), USDC, 1 ether);
         assertTrue(maxOutput > 0 && abi.decode(extraArgs, (address)) == uniV2ForkFactory);
+        (uint256 amountOut) = adapter.getOutputFromArgs(address(WETH), USDC, 1 ether, extraArgs);
+        assertEq(maxOutput, amountOut);
     }
 
     function testIntegration__UniswapV2Adapter_swap() public {

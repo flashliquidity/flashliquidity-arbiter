@@ -202,6 +202,30 @@ contract UniswapV3Adapter is DexAdapter, Governable, IUniswapV3SwapCallback {
         }
     }
 
+    function _getOutputFromArgs(address tokenIn, address tokenOut, uint256 amountIn, bytes memory extraArgs)
+        internal
+        view
+        override
+        returns (uint256 amountOut)
+    {
+        (address factory, uint24 fee) = abi.decode(extraArgs, (address, uint24));
+        UniswapV3FactoryData memory factoryData = s_factoryData[factory];
+        if (!factoryData.isRegistered) return 0;
+        bytes memory encodedQuoterParams = abi.encodeWithSelector(
+            IQuoterV2.quoteExactInputSingle.selector,
+            IQuoterV2.QuoteExactInputSingleParams({
+                tokenIn: tokenIn,
+                tokenOut: tokenOut,
+                amountIn: amountIn,
+                fee: fee,
+                sqrtPriceLimitX96: 0
+            })
+        );
+        (bool success, bytes memory returnData) = factoryData.quoter.staticcall(encodedQuoterParams);
+        if (!success) return 0;
+        return abi.decode(returnData, (uint256));
+    }
+
     /**
      * @dev Calculates the maximum output for a swap operation, considering the different fee tiers of the specified Uniswap V3 factory.
      * @param targetFactory The Uniswap V3 factory interface to be used for the swap.

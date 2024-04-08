@@ -40,6 +40,18 @@ interface IDexAdapter {
         returns (uint256 maxOutput, bytes memory extraArgs);
 
     /**
+     * @param tokenIn The address of the input token.
+     * @param tokenOut The address of the output token.
+     * @param amountIn The amount of input tokens to be swapped.
+     * @param extraArgs Adapter specific encoded extra arguments, used for providing additional instructions or data required by the specific DEX adapter.
+     * @return amountOut The amount of output tokens received.
+     */
+    function getOutputFromArgs(address tokenIn, address tokenOut, uint256 amountIn, bytes memory extraArgs)
+        external
+        view
+        returns (uint256 amountOut);
+
+    /**
      * @return description A string containing the description and version of the adapter.
      * @notice This function returns a textual description and version number of the adapter,
      */
