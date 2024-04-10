@@ -248,6 +248,53 @@ contract BalancerV2Adapter is DexAdapter, Governable {
         return _getAmountOut(swapRequest, vault, pool);
     }
 
+    /// @inheritdoc DexAdapter
+    function _getAdapterArgs(address tokenIn, address tokenOut)
+        internal
+        view
+        override
+        returns (bytes[] memory extraArgs)
+    {
+        uint256 vaultsLen = s_vaults.length;
+        bytes[][] memory tempArgs = new bytes[][](s_vaults.length);
+        uint256 argsLen = 0;
+        address vault;
+        address[] memory pools;
+        for (uint256 i; i < vaultsLen;) {
+            vault = s_vaults[i];
+            pools = tokenIn < tokenOut
+                ? s_tokensToVaultPools[tokenIn][tokenOut][vault]
+                : s_tokensToVaultPools[tokenOut][tokenIn][vault];
+            uint256 poolsLen = pools.length;
+            if (poolsLen > 0) tempArgs[i] = new bytes[](poolsLen);
+            for (uint256 j; j < poolsLen;) {
+                tempArgs[i][j] = abi.encode(vault, j);
+                unchecked {
+                    ++j;
+                    ++argsLen;
+                }
+            }
+            unchecked {
+                ++i;
+            }
+        }
+        if (argsLen > 0) extraArgs = new bytes[](argsLen);
+        uint256 extraArgsIndex;
+        for (uint256 i; i < vaultsLen;) {
+            uint256 poolsLen = tempArgs[i].length;
+            for (uint256 j; j < poolsLen;) {
+                extraArgs[extraArgsIndex] = tempArgs[i][j];
+                unchecked {
+                    ++extraArgsIndex;
+                    ++j;
+                }
+            }
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
     /**
      * @dev Calculates the output amount for a given swap request in a Balancer V2 pool.
      * @param swapRequest A struct containing details about the swap request, including the token in, token out, and the amount in.

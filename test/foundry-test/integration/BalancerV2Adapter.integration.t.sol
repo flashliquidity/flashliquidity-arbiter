@@ -40,6 +40,11 @@ contract BalancerV2AdapterIntegrationTest is Test {
         assertEq(maxOutput, amountOut);
     }
 
+    function testIntegration__BalancerV2Adapter_getAdapterArgs() public {
+        (bytes[] memory adapterArgs) = adapter.getAdapterArgs(address(WETH), WBTC);
+        assertGt(adapterArgs.length, 0);
+    }
+
     function testIntegration__BalancerV2Adapter_swap() public {
         (uint256 maxOutput, bytes memory extraArgs) = adapter.getMaxOutput(address(WETH), WBTC, 1 ether);
         assertFalse(ERC20(WBTC).balanceOf(msg.sender) > 0);

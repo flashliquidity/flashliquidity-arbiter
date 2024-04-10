@@ -202,6 +202,7 @@ contract UniswapV3Adapter is DexAdapter, Governable, IUniswapV3SwapCallback {
         }
     }
 
+    /// @inheritdoc DexAdapter
     function _getOutputFromArgs(address tokenIn, address tokenOut, uint256 amountIn, bytes memory extraArgs)
         internal
         view
@@ -224,6 +225,63 @@ contract UniswapV3Adapter is DexAdapter, Governable, IUniswapV3SwapCallback {
         (bool success, bytes memory returnData) = factoryData.quoter.staticcall(encodedQuoterParams);
         if (!success) return 0;
         return abi.decode(returnData, (uint256));
+    }
+
+    /// @inheritdoc DexAdapter
+    function _getAdapterArgs(address tokenIn, address tokenOut)
+        internal
+        view
+        override
+        returns (bytes[] memory extraArgs)
+    {
+        uint256 factoriesLen = s_factories.length;
+        bytes[][] memory tempArgs = new bytes[][](factoriesLen);
+        uint256 argsLen;
+        IUniswapV3Factory factory;
+        UniswapV3FactoryData memory factoryData;
+        for (uint256 i; i < factoriesLen;) {
+            factory = s_factories[i];
+            factoryData = s_factoryData[address(factory)];
+            uint256 feesLen = factoryData.fees.length;
+            uint24 fee;
+            if (feesLen > 0) tempArgs[i] = new bytes[](feesLen);
+            for (uint256 j; j < feesLen;) {
+                fee = factoryData.fees[j];
+                if (factory.getPool(tokenIn, tokenOut, fee) != address(0)) {
+                    tempArgs[i][j] = abi.encode(factory, fee);
+                    unchecked {
+                        ++argsLen;
+                    }
+                }
+                unchecked {
+                    ++j;
+                }
+            }
+            unchecked {
+                ++i;
+            }
+        }
+        if (argsLen > 0) extraArgs = new bytes[](argsLen);
+        uint256 extraArgsIndex = 0;
+        for (uint256 i; i < factoriesLen;) {
+            uint256 feesLen = tempArgs[i].length;
+            bytes memory tempArg;
+            for (uint256 j; j < feesLen;) {
+                tempArg = tempArgs[i][j];
+                if (tempArg.length > 0) {
+                    extraArgs[extraArgsIndex] = tempArg;
+                    unchecked {
+                        ++extraArgsIndex;
+                    }
+                }
+                unchecked {
+                    ++j;
+                }
+            }
+            unchecked {
+                ++i;
+            }
+        }
     }
 
     /**

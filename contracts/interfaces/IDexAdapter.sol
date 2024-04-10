@@ -52,6 +52,14 @@ interface IDexAdapter {
         returns (uint256 amountOut);
 
     /**
+     * @param tokenIn The address of the input token.
+     * @param tokenOut The address of the output token.
+     * @return adapterArgs Array of adapter extraArgs given the tokenIn and tokenOut.
+     *
+     */
+    function getAdapterArgs(address tokenIn, address tokenOut) external view returns (bytes[] memory adapterArgs);
+
+    /**
      * @return description A string containing the description and version of the adapter.
      * @notice This function returns a textual description and version number of the adapter,
      */

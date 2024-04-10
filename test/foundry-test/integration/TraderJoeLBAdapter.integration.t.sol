@@ -32,6 +32,11 @@ contract TraderJoeLBAdapterIntegrationTest is Test {
         assertEq(maxOutput, amountOut);
     }
 
+    function testIntegration__TraderJoeLBAdapter__getAdapterArgs() public {
+        (bytes[] memory adapterArgs) = adapter.getAdapterArgs(address(WETH), USDC);
+        assertGt(adapterArgs.length, 0);
+    }
+
     function testIntegration__TraderJoeLBAdapter_swap() public {
         (uint256 maxOutput, bytes memory extraArgs) = adapter.getMaxOutput(address(WETH), USDC, 1 ether);
         uint256 balanceBefore = ERC20(USDC).balanceOf(msg.sender);

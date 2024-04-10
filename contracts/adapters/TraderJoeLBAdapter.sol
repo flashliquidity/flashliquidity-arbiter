@@ -132,6 +132,51 @@ contract TraderJoeLBAdapter is DexAdapter, Governable {
         return _getAmountOut(pair, amountIn, swapForY);
     }
 
+    /// @inheritdoc DexAdapter
+    function _getAdapterArgs(address tokenIn, address tokenOut)
+        internal
+        view
+        override
+        returns (bytes[] memory extraArgs)
+    {
+        uint256 factoriesLen = s_factories.length;
+        bytes[][] memory tempArgs = new bytes[][](s_factories.length);
+        uint256 argsLen = 0;
+        ILBFactory factory;
+        ILBFactory.LBPairInformation[] memory lbPairs;
+        for (uint256 i; i < factoriesLen;) {
+            factory = s_factories[i];
+            lbPairs = factory.getAllLBPairs(tokenIn, tokenOut);
+            uint256 lbPairsLen = lbPairs.length;
+            if (lbPairsLen > 0) tempArgs[i] = new bytes[](lbPairsLen);
+            for (uint256 j; j < lbPairsLen;) {
+                tempArgs[i][j] = abi.encode(factory, lbPairs[i].binStep);
+                unchecked {
+                    ++argsLen;
+                    ++j;
+                }
+            }
+            unchecked {
+                ++i;
+            }
+        }
+        if (argsLen > 0) extraArgs = new bytes[](argsLen);
+        uint256 extraArgsIndex;
+        for (uint256 i; i < factoriesLen;) {
+            uint256 tempArgLen = tempArgs[i].length;
+            for (uint256 j; j < tempArgLen;) {
+                extraArgs[extraArgsIndex] = tempArgs[i][j];
+                unchecked {
+                    ++extraArgsIndex;
+                    ++j;
+                }
+            }
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
     /**
      * @dev Calculates the expected output token amount for a given input amount in a swap.
      * @param pair The ILBPair of the pair contract from the Liquidity Book.

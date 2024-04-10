@@ -8,7 +8,6 @@ import {AlgebraAdapter} from "../../../contracts/adapters/AlgebraAdapter.sol";
 import {Governable} from "flashliquidity-acs/contracts/Governable.sol";
 import {IWETH} from "@uniswap/v2-periphery/contracts/interfaces/IWETH.sol";
 import {ERC20} from "../../mocks/ERC20Mock.sol";
-import "forge-std/console.sol";
 
 contract AlgebraAdapterIntegrationTest is Test {
     AlgebraAdapter adapter;
@@ -32,6 +31,11 @@ contract AlgebraAdapterIntegrationTest is Test {
         assertEq(factory, algebraFactory);
         (uint256 amountOut) = adapter.getOutputFromArgs(address(WETH), USDC, 1 ether, extraArgs);
         assertEq(maxOutput, amountOut);
+    }
+
+    function testIntegration__AlgebraAdapter__getAdapterArgs() public {
+        (bytes[] memory adapterArgs) = adapter.getAdapterArgs(address(WETH), USDC);
+        assertGt(adapterArgs.length, 0);
     }
 
     function testIntegration__AlgebraAdapter_swap() public {

@@ -118,6 +118,7 @@ contract UniswapV2Adapter is DexAdapter, Governable {
         }
     }
 
+    /// @inheritdoc DexAdapter
     function _getOutputFromArgs(address tokenIn, address tokenOut, uint256 amountIn, bytes memory extraArgs)
         internal
         view
@@ -130,6 +131,38 @@ contract UniswapV2Adapter is DexAdapter, Governable {
         address pool = factory.getPair(tokenIn, tokenOut);
         if (pool == address(0)) return 0;
         return _getAmountOut(pool, amountIn, factoryData.feeNumerator, factoryData.feeDenominator, tokenIn < tokenOut);
+    }
+
+    /// @inheritdoc DexAdapter
+    function _getAdapterArgs(address tokenIn, address tokenOut)
+        internal
+        view
+        override
+        returns (bytes[] memory extraArgs)
+    {
+        uint256 factoriesLen = s_factories.length;
+        bytes[] memory tempArgs = new bytes[](factoriesLen);
+        uint256 argsLen;
+        IUniswapV2Factory factory;
+        for (uint256 i; i < factoriesLen;) {
+            factory = s_factories[i];
+            if (factory.getPair(tokenIn, tokenOut) != address(0)) {
+                tempArgs[argsLen] = abi.encode(address(factory));
+                unchecked {
+                    ++argsLen;
+                }
+            }
+            unchecked {
+                ++i;
+            }
+        }
+        extraArgs = new bytes[](argsLen);
+        for (uint256 j; j < argsLen;) {
+            extraArgs[j] = tempArgs[j];
+            unchecked {
+                ++j;
+            }
+        }
     }
 
     /**

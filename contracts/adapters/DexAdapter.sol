@@ -60,16 +60,6 @@ abstract contract DexAdapter is IDexAdapter {
         virtual
         returns (uint256 maxOutput, bytes memory extraArgs);
 
-    /// @inheritdoc IDexAdapter
-    function getMaxOutput(address tokenIn, address tokenOut, uint256 amountIn)
-        external
-        view
-        returns (uint256 maxOutput, bytes memory extraArgs)
-    {
-        if (tokenIn == tokenOut || amountIn == 0) return (0, new bytes(0));
-        (maxOutput, extraArgs) = _getMaxOutput(tokenIn, tokenOut, amountIn);
-    }
-
     /**
      * @param tokenIn The address of the input token.
      * @param tokenOut The address of the output token.
@@ -82,6 +72,23 @@ abstract contract DexAdapter is IDexAdapter {
         virtual
         returns (uint256 amountOut);
 
+    /**
+     * @param tokenIn The address of the input token.
+     * @param tokenOut The address of the output token.
+     * @return adapterArgs Array of adapter extraArgs given the tokenIn and tokenOut.
+     */
+    function _getAdapterArgs(address tokenIn, address tokenOut) internal view virtual returns (bytes[] memory adapterArgs);
+
+    /// @inheritdoc IDexAdapter
+    function getMaxOutput(address tokenIn, address tokenOut, uint256 amountIn)
+        external
+        view
+        returns (uint256 maxOutput, bytes memory extraArgs)
+    {
+        if (tokenIn == tokenOut || amountIn == 0) return (0, new bytes(0));
+        (maxOutput, extraArgs) = _getMaxOutput(tokenIn, tokenOut, amountIn);
+    }
+
     /// @inheritdoc IDexAdapter
     function getOutputFromArgs(address tokenIn, address tokenOut, uint256 amountIn, bytes memory extraArgs)
         external
@@ -90,5 +97,11 @@ abstract contract DexAdapter is IDexAdapter {
     {
         if (tokenIn == tokenOut || amountIn == 0) return 0;
         amountOut = _getOutputFromArgs(tokenIn, tokenOut, amountIn, extraArgs);
+    }
+
+    /// @inheritdoc IDexAdapter
+    function getAdapterArgs(address tokenIn, address tokenOut) external view returns (bytes[] memory extraArgs) {
+        if (tokenIn == tokenOut) return extraArgs;
+        extraArgs = _getAdapterArgs(tokenIn, tokenOut);
     }
 }

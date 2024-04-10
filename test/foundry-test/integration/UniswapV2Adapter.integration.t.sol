@@ -30,6 +30,11 @@ contract UniswapV2AdapterIntegrationTest is Test {
         assertEq(maxOutput, amountOut);
     }
 
+    function testIntegration__UniswapV2Adapter__getAdapterArgs() public {
+        bytes[] memory extraArgs = adapter.getAdapterArgs(address(WETH), USDC);
+        assertGt(extraArgs.length, 0);
+    }
+
     function testIntegration__UniswapV2Adapter_swap() public {
         (uint256 maxOutput, bytes memory extraArgs) = adapter.getMaxOutput(address(WETH), USDC, 1 ether);
         assertFalse(ERC20(USDC).balanceOf(msg.sender) > 0);

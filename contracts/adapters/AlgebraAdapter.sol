@@ -188,6 +188,38 @@ contract AlgebraAdapter is DexAdapter, Governable, IAlgebraSwapCallback {
         return abi.decode(returnData, (uint256));
     }
 
+    /// @inheritdoc DexAdapter
+    function _getAdapterArgs(address tokenIn, address tokenOut)
+        internal
+        view
+        override
+        returns (bytes[] memory extraArgs)
+    {
+        uint256 factoriesLen = s_factories.length;
+        bytes[] memory tempArgs = new bytes[](s_factories.length);
+        uint256 argsLen = 0;
+        IAlgebraFactory factory;
+        for (uint256 i; i < factoriesLen;) {
+            factory = s_factories[i];
+            if (factory.poolByPair(tokenIn, tokenOut) != address(0)) {
+                tempArgs[argsLen] = abi.encode(factory);
+                unchecked {
+                    ++argsLen;
+                }
+            }
+            unchecked {
+                ++i;
+            }
+        }
+        if (argsLen > 0) extraArgs = new bytes[](argsLen);
+        for (uint256 j; j < argsLen;) {
+            extraArgs[j] = tempArgs[j];
+            unchecked {
+                ++j;
+            }
+        }
+    }
+
     /**
      * @dev Retrieves the details of a specific factory, identified by its index.
      * @param factoryIndex The index of the factory in the 's_factories' array.
