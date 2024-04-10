@@ -81,14 +81,16 @@ contract Arbiter is IArbiter, AutomationCompatibleInterface, StreamsLookupCompat
         bool zeroToOne; // Direction of the swap; true for token0 to token1, false for token1 to token0.
     }
 
-    struct BasicReport {
+    struct PremiumReport {
         bytes32 feedId; // The feed ID the report has data for
         uint32 validFromTimestamp; // Earliest timestamp for which price is applicable
         uint32 observationsTimestamp; // Latest timestamp for which price is applicable
         uint192 nativeFee; // Base cost to validate a transaction using the report, denominated in the chain’s native token (WETH/ETH)
         uint192 linkFee; // Base cost to validate a transaction using the report, denominated in LINK
-        uint64 expiresAt; // Latest timestamp where the report can be verified on-chain
+        uint32 expiresAt; // Latest timestamp where the report can be verified onchain
         int192 price; // DON consensus median price, carried to 8 decimal places
+        int192 bid; // Simulated price impact of a buy order up to the X% depth of liquidity utilisation
+        int192 ask; // Simulated price impact of a sell order up to the X% depth of liquidity utilisation
     }
 
     struct RebalancingInfo {
@@ -558,8 +560,8 @@ contract Arbiter is IArbiter, AutomationCompatibleInterface, StreamsLookupCompat
         address selfBalancingPool = abi.decode(extraData, (address));
         (, bytes memory reportDataTokenIn) = abi.decode(values[0], (bytes32[3], bytes));
         (, bytes memory reportDataTokenOut) = abi.decode(values[1], (bytes32[3], bytes));
-        BasicReport memory reportTokenIn = abi.decode(reportDataTokenIn, (BasicReport));
-        BasicReport memory reportTokenOut = abi.decode(reportDataTokenOut, (BasicReport));
+        PremiumReport memory reportTokenIn = abi.decode(reportDataTokenIn, (PremiumReport));
+        PremiumReport memory reportTokenOut = abi.decode(reportDataTokenOut, (PremiumReport));
         if (reportTokenIn.price <= int192(0) || reportTokenOut.price <= int192(0)) {
             revert Arbiter__InvalidPrice();
         }
