@@ -156,9 +156,9 @@ contract BalancerV2Adapter is DexAdapter, Governable {
         address tokenOut,
         address to,
         uint256 amountIn,
-        uint256 amountOut,
+        uint256 amountOutMin,
         bytes memory extraArgs
-    ) internal override {
+    ) internal override returns (uint256 amountOut) {
         (address vault, uint256 poolIndex) = abi.decode(extraArgs, (address, uint256));
         if (!s_isRegisteredVault[vault]) revert BalancerV2Adapter__NotRegisteredVault();
         address pool = tokenIn < tokenOut
@@ -183,6 +183,7 @@ contract BalancerV2Adapter is DexAdapter, Governable {
             toInternalBalance: false
         });
         IVault(vault).swap(swap, fund, amountOut, block.timestamp);
+        amountOut = amountOutMin;
     }
 
     /// @inheritdoc DexAdapter

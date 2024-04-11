@@ -22,10 +22,10 @@ abstract contract DexAdapter is IDexAdapter {
         address tokenOut,
         address to,
         uint256 amountIn,
-        uint256 amountOut,
+        uint256 amountOutMin,
         bytes memory extraArgs
-    ) external {
-        _swap(tokenIn, tokenOut, to, amountIn, amountOut, extraArgs);
+    ) external returns (uint256 amountOut) {
+        amountOut = _swap(tokenIn, tokenOut, to, amountIn, amountOutMin, extraArgs);
     }
 
     /**
@@ -42,9 +42,9 @@ abstract contract DexAdapter is IDexAdapter {
         address tokenOut,
         address to,
         uint256 amountIn,
-        uint256 amountOut,
+        uint256 amountOutMin,
         bytes memory extraArgs
-    ) internal virtual;
+    ) internal virtual returns (uint256 amountOut);
 
     /**
      * @param tokenIn The address of the input token.
@@ -77,7 +77,11 @@ abstract contract DexAdapter is IDexAdapter {
      * @param tokenOut The address of the output token.
      * @return adapterArgs Array of adapter extraArgs given the tokenIn and tokenOut.
      */
-    function _getAdapterArgs(address tokenIn, address tokenOut) internal view virtual returns (bytes[] memory adapterArgs);
+    function _getAdapterArgs(address tokenIn, address tokenOut)
+        internal
+        view
+        virtual
+        returns (bytes[] memory adapterArgs);
 
     /// @inheritdoc IDexAdapter
     function getMaxOutput(address tokenIn, address tokenOut, uint256 amountIn)

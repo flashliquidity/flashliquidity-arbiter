@@ -64,7 +64,7 @@ contract TraderJoeLBAdapter is DexAdapter, Governable {
         uint256 amountIn,
         uint256 amountOutMin,
         bytes memory extraArgs
-    ) internal override {
+    ) internal override returns (uint256 amountOut) {
         (address factory, uint24 binStep) = abi.decode(extraArgs, (address, uint24));
         if (!s_isRegisteredFactory[factory]) revert TraderJoeLBAdapter__NotRegisteredFactory();
         ILBFactory.LBPairInformation memory pairInfo =
@@ -73,7 +73,6 @@ contract TraderJoeLBAdapter is DexAdapter, Governable {
         bool swapForY = ILBPair(pairInfo.LBPair).getTokenY() == tokenOut;
         IERC20(tokenIn).safeTransferFrom(msg.sender, pairInfo.LBPair, amountIn);
         bytes32 amountsOut = ILBPair(pairInfo.LBPair).swap(swapForY, to);
-        uint256 amountOut;
         assembly {
             switch swapForY
             case 0 { amountOut := and(amountsOut, 0xffffffffffffffffffffffffffffffff) }

@@ -145,9 +145,9 @@ contract UniswapV3Adapter is DexAdapter, Governable, IUniswapV3SwapCallback {
         address tokenOut,
         address to,
         uint256 amountIn,
-        uint256 amountOut,
+        uint256 amountOutMin,
         bytes memory extraArgs
-    ) internal override {
+    ) internal override returns (uint256 amountOut) {
         (address factory, uint24 fee) = abi.decode(extraArgs, (address, uint24));
         if (!s_factoryData[factory].isRegistered) revert UniswapV3Adapter__NotRegisteredFactory();
         bool zeroToOne = tokenIn < tokenOut;
@@ -162,11 +162,8 @@ contract UniswapV3Adapter is DexAdapter, Governable, IUniswapV3SwapCallback {
             zeroToOne ? MIN_SQRT_RATIO + 1 : MAX_SQRT_RATIO - 1,
             abi.encode(callbackData)
         );
-        if (zeroToOne && uint256(-amount1Delta) < amountOut) {
-            revert UniswapV3Adapter__InsufficentOutput();
-        } else if (!zeroToOne && uint256(-amount0Delta) < amountOut) {
-            revert UniswapV3Adapter__InsufficentOutput();
-        }
+        amountOut = zeroToOne ? uint256(-amount1Delta) : uint256(-amount0Delta);
+        if (amountOutMin < amountOut) revert UniswapV3Adapter__InsufficentOutput();
     }
 
     /// @inheritdoc DexAdapter

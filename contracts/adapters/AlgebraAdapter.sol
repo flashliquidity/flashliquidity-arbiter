@@ -103,9 +103,9 @@ contract AlgebraAdapter is DexAdapter, Governable, IAlgebraSwapCallback {
         address tokenOut,
         address to,
         uint256 amountIn,
-        uint256 amountOut,
+        uint256 amountOutMin,
         bytes memory extraArgs
-    ) internal override {
+    ) internal override returns (uint256 amountOut) {
         (address factory) = abi.decode(extraArgs, (address));
         if (!s_factoryData[factory].isRegistered) revert AlgebraAdapter__NotRegisteredFactory();
         bool zeroToOne = tokenIn < tokenOut;
@@ -120,11 +120,8 @@ contract AlgebraAdapter is DexAdapter, Governable, IAlgebraSwapCallback {
             zeroToOne ? MIN_SQRT_RATIO + 1 : MAX_SQRT_RATIO - 1,
             abi.encode(callbackData)
         );
-        if (zeroToOne && uint256(-amount1Delta) < amountOut) {
-            revert AlgebraAdapter__InsufficentOutput();
-        } else if (!zeroToOne && uint256(-amount0Delta) < amountOut) {
-            revert AlgebraAdapter__InsufficentOutput();
-        }
+        amountOut = zeroToOne ? uint256(-amount1Delta) : uint256(-amount0Delta);
+        if (amountOutMin < amountOut) revert AlgebraAdapter__InsufficentOutput();
     }
 
     /// @inheritdoc DexAdapter

@@ -76,7 +76,7 @@ contract UniswapV2Adapter is DexAdapter, Governable {
         uint256 amount0Out,
         uint256 amount1Out,
         bytes memory extraArgs
-    ) internal override {
+    ) internal override returns (uint256 amountOut) {
         IUniswapV2Factory factory = IUniswapV2Factory(abi.decode(extraArgs, (address)));
         if (!s_factoryData[address(factory)].isRegistered) revert UniswapV2Adapter__NotRegisteredFactory();
         address targetPool = factory.getPair(tokenIn, tokenOut);
@@ -85,6 +85,7 @@ contract UniswapV2Adapter is DexAdapter, Governable {
         if (targetPool == address(0)) revert UniswapV2Adapter__InvalidPool();
         IERC20(tokenIn).safeTransferFrom(msg.sender, targetPool, amountIn);
         IUniswapV2Pair(targetPool).swap(amount0Out, amount1Out, to, new bytes(0));
+        amountOut = amount1Out;
     }
 
     /// @inheritdoc DexAdapter
