@@ -71,26 +71,27 @@ contract Arbiter is IArbiter, AutomationCompatibleInterface, StreamsLookupCompat
     }
 
     struct CallbackData {
-        address selfBalancingPool; // Address of the self-balancing pool involved in the swap.
         address token0; // Address of the first token in the swap pair.
         address token1; // Address of the second token in the swap pair.
+        address rewardVault; // Address of the rewards vault to send profit to.
+        uint256 minProfitTokenIn; // The minimum profit denominated in tokenIn below which the rebalancing operation reverts.
         uint256 adapterIndex; // Index of the adapter used for the swap.
-        uint256 amountDebt; // Amount of the token that needs to be returned in a flash swap.
+        uint256 amountDebt; // Amount of the debt that needs to be returned to the self-balancing pool.
         uint256 targetAdapterOutput; // Expected output from the swap operation.
         bytes extraArgs; // Additional encoded arguments required for post-swap operations.
         bool zeroToOne; // Direction of the swap; true for token0 to token1, false for token1 to token0.
     }
 
     struct PremiumReport {
-        bytes32 feedId; // The feed ID the report has data for
-        uint32 validFromTimestamp; // Earliest timestamp for which price is applicable
-        uint32 observationsTimestamp; // Latest timestamp for which price is applicable
-        uint192 nativeFee; // Base cost to validate a transaction using the report, denominated in the chain’s native token (WETH/ETH)
-        uint192 linkFee; // Base cost to validate a transaction using the report, denominated in LINK
-        uint32 expiresAt; // Latest timestamp where the report can be verified onchain
-        int192 price; // DON consensus median price, carried to 8 decimal places
-        int192 bid; // Simulated price impact of a buy order up to the X% depth of liquidity utilisation
-        int192 ask; // Simulated price impact of a sell order up to the X% depth of liquidity utilisation
+        bytes32 feedId; // The feed ID the report has data for.
+        uint32 validFromTimestamp; // Earliest timestamp for which price is applicable.
+        uint32 observationsTimestamp; // Latest timestamp for which price is applicable.
+        uint192 nativeFee; // Base cost to validate a transaction using the report, denominated in the chain’s native token (WETH/ETH).
+        uint192 linkFee; // Base cost to validate a transaction using the report, denominated in LINK.
+        uint32 expiresAt; // Latest timestamp where the report can be verified onchain.
+        int192 price; // DON consensus median price, carried to 8 decimal places.
+        int192 bid; // Simulated price impact of a buy order up to the X% depth of liquidity utilisation.
+        int192 ask; // Simulated price impact of a sell order up to the X% depth of liquidity utilisation.
     }
 
     struct RebalancingInfo {
@@ -262,17 +263,39 @@ contract Arbiter is IArbiter, AutomationCompatibleInterface, StreamsLookupCompat
         }
     }
 
-    /// @inheritdoc IArbiter
+    /**
+     * @inheritdoc IArbiter
+     * @dev This function is called post-flash swap inside performUpkeep call to handle the received tokens.
+     *
+     * The function performs the following operations:
+     * 1. Decodes the `data` to retrieve `CallbackData` which contains swap details and profit targets.
+     * 2. Determines the direction of the swap and sets the corresponding token amounts for the swap.
+     * 3. Executes the swap via the specified DEX adapter using the amounts and parameters from `CallbackData`.
+     * 4. Calculates the profit from the swap and ensures it meets the minimum profit threshold specified in `CallbackData`.
+     * 5. Distributes the profit to the designated `rewardVault` and returns the borrowed amount to the self-balancing pool.
+     *
+     * Reverts if:
+     * - The call is not from the expected permissioned pair address (`msg.sender` check).
+     * - The sender is not the Arbiter contract itself.
+     * - The calculated profit does not meet the minimum required profit threshold.
+     *
+     */
     function flashLiquidityCall(address sender, uint256 amount0, uint256 amount1, bytes memory data) external {
         if (msg.sender != s_permissionedPairAddress) revert Arbiter__NotPermissionedPair();
         if (sender != address(this)) revert Arbiter__NotFromArbiter();
         CallbackData memory info = abi.decode(data, (CallbackData));
-        (address tokenIn, address tokenOut, uint256 amountIn) =
-            info.zeroToOne ? (info.token1, info.token0, amount1) : (info.token0, info.token1, amount0);
+        (IERC20 tokenIn, IERC20 tokenOut, uint256 amountIn) = info.zeroToOne
+            ? (IERC20(info.token1), IERC20(info.token0), amount1)
+            : (IERC20(info.token0), IERC20(info.token1), amount0);
         IDexAdapter adapter = s_adapters[info.adapterIndex];
-        IERC20(tokenIn).forceApprove(address(adapter), amountIn);
-        adapter.swap(tokenIn, tokenOut, address(this), amountIn, info.targetAdapterOutput, info.extraArgs);
-        IERC20(tokenOut).safeTransfer(info.selfBalancingPool, info.amountDebt);
+        tokenIn.forceApprove(address(adapter), amountIn);
+        uint256 amoutOut = adapter.swap(
+            address(tokenIn), address(tokenOut), address(this), amountIn, info.targetAdapterOutput, info.extraArgs
+        );
+        uint256 profit = amoutOut - info.amountDebt;
+        if (profit < info.minProfitTokenIn) revert Arbiter__InsufficentProfit();
+        tokenOut.safeTransfer(info.rewardVault, profit);
+        tokenOut.safeTransfer(msg.sender, info.amountDebt);
     }
 
     /**
@@ -283,13 +306,11 @@ contract Arbiter is IArbiter, AutomationCompatibleInterface, StreamsLookupCompat
      * In the function:
      * 1. It decodes `performData` to extract signed reports and the ArbiterCall struct.
      * 2. Retrieves the job configuration for the self-balancing pool involved in the call.
-     * 3. Prepares callback data for the swap operation.
-     * 4. Sets the permissioned pair address to the self-balancing pool address for validation.
-     * 5. Determines the input token, initial amounts for the swap, and price of the token in.
-     * 6. Verifies data stream reports if present.
-     * 7. Performs the swap operation via the self-balancing pool.
-     * 8. Calculates the profit and reverts if it's below the configured minimum reserve to profit ratio.
-     * 9. Resets the permissioned pair address and transfers the profit to the reward vault.
+     * 3. Sets the permissioned pair address to the self-balancing pool address for validation.
+     * 4. Prepares callback data for the swap operation.
+     * 5. Verifies data stream reports if present.
+     * 6. Performs the swap operation via the self-balancing pool.
+     * 7. Resets the permissioned pair address.
      *
      * @notice This function is crucial for the automated rebalancing of pools and is triggered by Chainlink Automation.
      * @notice It ensures that each swap is profitable and adheres to the configured parameters of the job.
@@ -299,29 +320,23 @@ contract Arbiter is IArbiter, AutomationCompatibleInterface, StreamsLookupCompat
         ArbiterJobConfig memory jobConfig = s_jobConfig[call.selfBalancingPool];
         if (msg.sender != jobConfig.automationForwarder) revert Arbiter__NotFromForwarder();
         if (signedReports.length != 0) _verifyDataStreamReports(signedReports);
+        s_permissionedPairAddress = call.selfBalancingPool;
+        (uint256 reserve0, uint256 reserve1,) = IFlashLiquidityPair(call.selfBalancingPool).getReserves();
+        (uint256 amount0, uint256 amount1, uint256 reserveTokenIn) =
+            call.zeroToOne ? (uint256(0), call.amountOut, reserve0) : (call.amountOut, uint256(0), reserve1);
         CallbackData memory callbackData = CallbackData({
-            selfBalancingPool: call.selfBalancingPool,
             token0: jobConfig.tokenIn,
             token1: jobConfig.tokenOut,
+            rewardVault: jobConfig.rewardVault,
+            minProfitTokenIn: reserveTokenIn / jobConfig.reserveToMinProfit,
             adapterIndex: call.adapterIndex,
             targetAdapterOutput: call.targetAdapterOutput,
             amountDebt: call.amountIn,
             extraArgs: call.extraArgs,
             zeroToOne: call.zeroToOne
         });
-        s_permissionedPairAddress = call.selfBalancingPool;
-        (IERC20 tokenIn, uint256 amount0, uint256 amount1) = call.zeroToOne
-            ? (IERC20(jobConfig.tokenIn), uint256(0), call.amountOut)
-            : (IERC20(jobConfig.tokenOut), call.amountOut, uint256(0));
-        uint256 balanceBefore = tokenIn.balanceOf(address(this));
-        (uint256 reserve0, uint256 reserve1,) = IFlashLiquidityPair(call.selfBalancingPool).getReserves();
         IFlashLiquidityPair(call.selfBalancingPool).swap(amount0, amount1, address(this), abi.encode(callbackData));
         s_permissionedPairAddress = address(1);
-        uint256 profit = (tokenIn.balanceOf(address(this)) - balanceBefore);
-        uint256 minProfit = call.zeroToOne ? reserve0 : reserve1;
-        minProfit = minProfit / jobConfig.reserveToMinProfit;
-        if (profit < minProfit) revert Arbiter__InsufficentProfit();
-        tokenIn.safeTransfer(jobConfig.rewardVault, profit);
     }
 
     ////////////////////////

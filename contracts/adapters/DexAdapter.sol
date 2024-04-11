@@ -33,8 +33,9 @@ abstract contract DexAdapter is IDexAdapter {
      * @param tokenOut The address of the output token.
      * @param to The recipient of the swap
      * @param amountIn The amount of input tokens to be swapped.
-     * @param amountOut The expected amount of output tokens to be received.
+     * @param amountOutMin The minimum amount out of output tokens below which the swap reverts.
      * @param extraArgs Adapter specific encoded extra arguments, used for providing additional instructions or data required by the specific DEX adapter.
+     * @return amountOut The amount of output token received.
      * @notice Must be overridden for each concrete adapter with the correct implementation for the target DEX.
      */
     function _swap(

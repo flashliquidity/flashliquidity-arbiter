@@ -94,8 +94,6 @@ interface IArbiter {
      * @param amount0 The amount of token0 obtained as a result of the swap.
      * @param amount1 The amount of token1 obtained as a result of the swap.
      * @param data Encoded data in the form of a CallbackData struct, containing instructions for the rebalancing operation to be executed on another DEX.
-     * @notice This function will revert under two conditions: if the 'sender' is not the authorized arbiter, or if the `msg.sender` is not the permitted pair address for the swap.
-     * @notice It is essential for security that only authorized entities can trigger and execute this callback to prevent unauthorized or malicious use.
      */
     function flashLiquidityCall(address sender, uint256 amount0, uint256 amount1, bytes memory data) external;
 

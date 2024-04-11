@@ -13,8 +13,9 @@ interface IDexAdapter {
      * @param tokenOut The address of the output token.
      * @param to The recipient of the swap.
      * @param amountIn The amount of input tokens to be swapped.
-     * @param amountOutMin The expected amount of output tokens to be received.
+     * @param amountOutMin The minimum amount out of output tokens below which the swap reverts.
      * @param extraArgs Adapter specific encoded extra arguments, used for providing additional instructions or data required by the specific DEX adapter.
+     * @return amountOut The amount of output token received.
      */
     function swap(
         address tokenIn,
