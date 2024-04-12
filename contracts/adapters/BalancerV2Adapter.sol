@@ -21,6 +21,7 @@ contract BalancerV2Adapter is DexAdapter, Governable {
     error BalancerV2Adapter__NotRegisteredVault();
     error BalancerV2Adapter__VaultAlreadyRegistered();
     error BalancerV2Adapter__InvalidPool();
+    error BalancerV2Adapter__InsufficientOutput();
 
     /// @dev Array of vault addresses registered with the contract.
     address[] private s_vaults;
@@ -165,6 +166,14 @@ contract BalancerV2Adapter is DexAdapter, Governable {
             ? s_tokensToVaultPools[tokenIn][tokenOut][vault][poolIndex]
             : s_tokensToVaultPools[tokenOut][tokenIn][vault][poolIndex];
         if (pool == address(0)) revert BalancerV2Adapter__InvalidPool();
+        IPoolSwapStructs.SwapRequest memory swapRequest;
+        swapRequest.kind = IVault.SwapKind.GIVEN_IN;
+        swapRequest.tokenIn = IERC20Balancer(tokenIn);
+        swapRequest.tokenOut = IERC20Balancer(tokenOut);
+        swapRequest.amount = amountIn;
+        swapRequest.poolId = IBasePool(pool).getPoolId();
+        amountOut = _getAmountOut(swapRequest, vault, pool);
+        if(amountOut < amountOutMin) revert BalancerV2Adapter__InsufficientOutput();
         IERC20 inputToken = IERC20(tokenIn);
         inputToken.safeTransferFrom(msg.sender, address(this), amountIn);
         inputToken.forceApprove(vault, amountIn);
@@ -182,7 +191,6 @@ contract BalancerV2Adapter is DexAdapter, Governable {
             fromInternalBalance: false,
             toInternalBalance: false
         });
-        amountOut = amountOutMin;
         IVault(vault).swap(swap, fund, amountOut, block.timestamp);
     }
 

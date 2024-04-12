@@ -20,6 +20,7 @@ contract UniswapV2Adapter is DexAdapter, Governable {
     error UniswapV2Adapter__NotRegisteredFactory();
     error UniswapV2Adapter__FactoryAlreadyRegistered();
     error UniswapV2Adapter__InvalidPool();
+    error UniswapV2Adapter__InsufficientOutput();
 
     struct UniswapV2FactoryData {
         bool isRegistered;
@@ -73,19 +74,20 @@ contract UniswapV2Adapter is DexAdapter, Governable {
         address tokenIn,
         address tokenOut,
         address to,
-        uint256 amount0Out,
-        uint256 amount1Out,
+        uint256 amountIn,
+        uint256 amountOutMin,
         bytes memory extraArgs
     ) internal override returns (uint256 amountOut) {
         IUniswapV2Factory factory = IUniswapV2Factory(abi.decode(extraArgs, (address)));
-        if (!s_factoryData[address(factory)].isRegistered) revert UniswapV2Adapter__NotRegisteredFactory();
+        UniswapV2FactoryData memory factoryData = s_factoryData[address(factory)];
+        if (!factoryData.isRegistered) revert UniswapV2Adapter__NotRegisteredFactory();
         address targetPool = factory.getPair(tokenIn, tokenOut);
-        uint256 amountIn = amount0Out;
-        (amount0Out, amount1Out) = tokenIn < tokenOut ? (uint256(0), amount1Out) : (amount1Out, uint256(0));
         if (targetPool == address(0)) revert UniswapV2Adapter__InvalidPool();
+        amountOut = _getAmountOut(targetPool, amountIn, factoryData.feeNumerator, factoryData.feeDenominator, tokenIn < tokenOut);
+        if(amountOut < amountOutMin) revert UniswapV2Adapter__InsufficientOutput();
+        (uint256 amount0Out, uint256 amount1Out) = tokenIn < tokenOut ? (uint256(0), amountOut) : (amountOut, uint256(0));
         IERC20(tokenIn).safeTransferFrom(msg.sender, targetPool, amountIn);
         IUniswapV2Pair(targetPool).swap(amount0Out, amount1Out, to, new bytes(0));
-        amountOut = amount1Out;
     }
 
     /// @inheritdoc DexAdapter

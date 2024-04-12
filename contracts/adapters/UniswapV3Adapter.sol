@@ -24,7 +24,7 @@ contract UniswapV3Adapter is DexAdapter, Governable, IUniswapV3SwapCallback {
     error UniswapV3Adapter__NotAuthorizedPool();
     error UniswapV3Adapter__InvalidPool();
     error UniswapV3Adapter__InvalidAmountDeltas();
-    error UniswapV3Adapter__InsufficentOutput();
+    error UniswapV3Adapter__InsufficientOutput();
 
     struct UniswapV3FactoryData {
         bool isRegistered;
@@ -163,7 +163,7 @@ contract UniswapV3Adapter is DexAdapter, Governable, IUniswapV3SwapCallback {
             abi.encode(callbackData)
         );
         amountOut = zeroToOne ? uint256(-amount1Delta) : uint256(-amount0Delta);
-        if (amountOut < amountOutMin) revert UniswapV3Adapter__InsufficentOutput();
+        if (amountOut < amountOutMin) revert UniswapV3Adapter__InsufficientOutput();
     }
 
     /// @inheritdoc DexAdapter
