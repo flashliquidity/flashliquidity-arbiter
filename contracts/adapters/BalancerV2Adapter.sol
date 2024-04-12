@@ -182,8 +182,8 @@ contract BalancerV2Adapter is DexAdapter, Governable {
             fromInternalBalance: false,
             toInternalBalance: false
         });
-        IVault(vault).swap(swap, fund, amountOut, block.timestamp);
         amountOut = amountOutMin;
+        IVault(vault).swap(swap, fund, amountOut, block.timestamp);
     }
 
     /// @inheritdoc DexAdapter

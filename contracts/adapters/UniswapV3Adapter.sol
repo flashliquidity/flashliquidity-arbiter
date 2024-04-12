@@ -163,7 +163,7 @@ contract UniswapV3Adapter is DexAdapter, Governable, IUniswapV3SwapCallback {
             abi.encode(callbackData)
         );
         amountOut = zeroToOne ? uint256(-amount1Delta) : uint256(-amount0Delta);
-        if (amountOutMin < amountOut) revert UniswapV3Adapter__InsufficentOutput();
+        if (amountOut < amountOutMin) revert UniswapV3Adapter__InsufficentOutput();
     }
 
     /// @inheritdoc DexAdapter

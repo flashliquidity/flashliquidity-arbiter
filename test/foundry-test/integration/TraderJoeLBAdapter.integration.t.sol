@@ -43,6 +43,6 @@ contract TraderJoeLBAdapterIntegrationTest is Test {
         WETH.deposit{value: 1 ether}();
         ERC20(address(WETH)).approve(address(adapter), 1 ether);
         adapter.swap(address(WETH), USDC, msg.sender, 1 ether, maxOutput, extraArgs);
-        assertEq(ERC20(USDC).balanceOf(msg.sender) - balanceBefore, maxOutput);
+        assertGe(ERC20(USDC).balanceOf(msg.sender) - balanceBefore, maxOutput);
     }
 }

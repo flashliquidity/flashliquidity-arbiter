@@ -121,7 +121,7 @@ contract AlgebraAdapter is DexAdapter, Governable, IAlgebraSwapCallback {
             abi.encode(callbackData)
         );
         amountOut = zeroToOne ? uint256(-amount1Delta) : uint256(-amount0Delta);
-        if (amountOutMin < amountOut) revert AlgebraAdapter__InsufficentOutput();
+        if (amountOut < amountOutMin) revert AlgebraAdapter__InsufficentOutput();
     }
 
     /// @inheritdoc DexAdapter
