@@ -173,7 +173,7 @@ contract BalancerV2Adapter is DexAdapter, Governable {
         swapRequest.amount = amountIn;
         swapRequest.poolId = IBasePool(pool).getPoolId();
         amountOut = _getAmountOut(swapRequest, vault, pool);
-        if(amountOut < amountOutMin) revert BalancerV2Adapter__InsufficientOutput();
+        if (amountOut < amountOutMin) revert BalancerV2Adapter__InsufficientOutput();
         IERC20 inputToken = IERC20(tokenIn);
         inputToken.safeTransferFrom(msg.sender, address(this), amountIn);
         inputToken.forceApprove(vault, amountIn);

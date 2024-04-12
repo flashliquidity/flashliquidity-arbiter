@@ -83,9 +83,12 @@ contract UniswapV2Adapter is DexAdapter, Governable {
         if (!factoryData.isRegistered) revert UniswapV2Adapter__NotRegisteredFactory();
         address targetPool = factory.getPair(tokenIn, tokenOut);
         if (targetPool == address(0)) revert UniswapV2Adapter__InvalidPool();
-        amountOut = _getAmountOut(targetPool, amountIn, factoryData.feeNumerator, factoryData.feeDenominator, tokenIn < tokenOut);
-        if(amountOut < amountOutMin) revert UniswapV2Adapter__InsufficientOutput();
-        (uint256 amount0Out, uint256 amount1Out) = tokenIn < tokenOut ? (uint256(0), amountOut) : (amountOut, uint256(0));
+        amountOut = _getAmountOut(
+            targetPool, amountIn, factoryData.feeNumerator, factoryData.feeDenominator, tokenIn < tokenOut
+        );
+        if (amountOut < amountOutMin) revert UniswapV2Adapter__InsufficientOutput();
+        (uint256 amount0Out, uint256 amount1Out) =
+            tokenIn < tokenOut ? (uint256(0), amountOut) : (amountOut, uint256(0));
         IERC20(tokenIn).safeTransferFrom(msg.sender, targetPool, amountIn);
         IUniswapV2Pair(targetPool).swap(amount0Out, amount1Out, to, new bytes(0));
     }

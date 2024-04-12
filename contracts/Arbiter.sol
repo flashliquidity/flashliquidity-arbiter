@@ -65,7 +65,6 @@ contract Arbiter is IArbiter, AutomationCompatibleInterface, StreamsLookupCompat
         uint256 amountIn; // Amount of the input token to be used in the trade.
         uint256 amountOut; // Expected amount of the output token from the trade.
         uint256 adapterIndex; // Index of the chosen DEX adapter for the trade.
-        uint256 targetAdapterOutput; // Expected output amount from the chosen adapter.
         bytes extraArgs; // Additional arguments required by the DEX adapter, encoded in bytes.
         bool zeroToOne; // Direction of the swap; true for tokenIn to tokenOut, false for tokenOut to tokenIn.
     }
@@ -77,7 +76,6 @@ contract Arbiter is IArbiter, AutomationCompatibleInterface, StreamsLookupCompat
         uint256 minProfitTokenIn; // The minimum profit denominated in tokenIn below which the rebalancing operation reverts.
         uint256 adapterIndex; // Index of the adapter used for the swap.
         uint256 amountDebt; // Amount of the debt that needs to be returned to the self-balancing pool.
-        uint256 targetAdapterOutput; // Expected output from the swap operation.
         bytes extraArgs; // Additional encoded arguments required for post-swap operations.
         bool zeroToOne; // Direction of the swap; true for token0 to token1, false for token1 to token0.
     }
@@ -289,9 +287,7 @@ contract Arbiter is IArbiter, AutomationCompatibleInterface, StreamsLookupCompat
             : (IERC20(info.token0), IERC20(info.token1), amount0);
         IDexAdapter adapter = s_adapters[info.adapterIndex];
         tokenIn.forceApprove(address(adapter), amountIn);
-        uint256 amoutOut = adapter.swap(
-            address(tokenIn), address(tokenOut), address(this), amountIn, info.targetAdapterOutput, info.extraArgs
-        );
+        uint256 amoutOut = adapter.swap(address(tokenIn), address(tokenOut), address(this), amountIn, 0, info.extraArgs);
         uint256 profit = amoutOut - info.amountDebt;
         if (profit < info.minProfitTokenIn) revert Arbiter__InsufficentProfit();
         tokenOut.safeTransfer(info.rewardVault, profit);
@@ -330,7 +326,6 @@ contract Arbiter is IArbiter, AutomationCompatibleInterface, StreamsLookupCompat
             rewardVault: jobConfig.rewardVault,
             minProfitTokenIn: reserveTokenIn / jobConfig.reserveToMinProfit,
             adapterIndex: call.adapterIndex,
-            targetAdapterOutput: call.targetAdapterOutput,
             amountDebt: call.amountIn,
             extraArgs: call.extraArgs,
             zeroToOne: call.zeroToOne
@@ -481,7 +476,6 @@ contract Arbiter is IArbiter, AutomationCompatibleInterface, StreamsLookupCompat
                     amountIn: rebalancing.amountIn,
                     amountOut: rebalancing.amountOut,
                     adapterIndex: adapterIndex,
-                    targetAdapterOutput: maxOutput,
                     extraArgs: extraArgs,
                     zeroToOne: rebalancing.zeroToOne
                 });
