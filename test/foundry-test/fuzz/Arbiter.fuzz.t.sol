@@ -19,12 +19,11 @@ contract ArbiterFuzzTest is Test, ArbiterHelpers {
     address feeManager;
     address adapter = makeAddr("adapter");
     address linkToken = makeAddr("linkToken");
-    uint32 priceMaxStaleness = 60;
 
     function setUp() public {
         feeManager = address(new FeeManagerMock(address(linkToken)));
         verifierProxy = address(new VerifierProxyMock(feeManager));
-        arbiter = new Arbiter(governor, verifierProxy, address(linkToken), priceMaxStaleness);
+        arbiter = new Arbiter(governor, verifierProxy, address(linkToken), 60, 1e17);
         vm.prank(governor);
         arbiter.pushDexAdapter(adapter);
     }

@@ -21,6 +21,11 @@ interface IArbiter {
     function setPriceMaxStaleness(uint32 priceMaxStaleness) external;
 
     /**
+     * @dev Updates the minimum Arbiter LINK balance to request data streams reports.
+     * @param minLinkDataStreams The new minimum LINK balance.
+     */
+    function setMinLinkDataStreams(uint64 minLinkDataStreams) external;
+    /**
      * @dev Registers Chainlink data feeds for specific tokens.
      * @param tokens An array of token addresses for which data feeds are to be registered.
      * @param dataFeeds An array of Chainlink data feed addresses, each corresponding to a token address in the 'tokens' array.
@@ -102,6 +107,8 @@ interface IArbiter {
 
     /// @return priceMaxStaleness The maximum duration (in seconds) that Chainlink Data Feed price data is considered valid.
     function getPriceMaxStaleness() external view returns (uint256 priceMaxStaleness);
+
+    function getMinLinkDataStreams() external view returns (uint256 minLinkDataStreams);
 
     /**
      * @dev Retrieves information about a specific Arbiter job associated with a self-balancing pool.

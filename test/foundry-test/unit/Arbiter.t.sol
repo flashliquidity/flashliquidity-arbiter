@@ -26,6 +26,7 @@ contract ArbiterTest is Test, ArbiterHelpers {
     address forwarder = makeAddr("forwarder");
     uint256 supply = 1e9 ether;
     uint32 priceMaxStaleness = 60;
+    uint64 minLinkDataStreams = 1e17;
 
     function setUp() public {
         vm.prank(governor);
@@ -34,7 +35,7 @@ contract ArbiterTest is Test, ArbiterHelpers {
         feeManager = address(new FeeManagerMock(address(linkToken)));
         verifierProxy = address(new VerifierProxyMock(feeManager));
         pairMock = new FlashLiquidityPairMock(address(linkToken), address(mockToken), governor);
-        arbiter = new Arbiter(governor, verifierProxy, address(linkToken), priceMaxStaleness);
+        arbiter = new Arbiter(governor, verifierProxy, address(linkToken), priceMaxStaleness, minLinkDataStreams);
     }
 
     function test__Arbiter_setPriceMaxStaleness() public {
@@ -45,6 +46,16 @@ contract ArbiterTest is Test, ArbiterHelpers {
         vm.prank(governor);
         arbiter.setPriceMaxStaleness(newPriceMaxStaleness);
         assertEq(arbiter.getPriceMaxStaleness(), newPriceMaxStaleness);
+    }
+
+    function test__Arbiter_setMinLinkDataStreams() public {
+        uint64 newMinLinkDataStreams = 1e18;
+        vm.expectRevert(Governable.Governable__NotAuthorized.selector);
+        arbiter.setMinLinkDataStreams(newMinLinkDataStreams);
+        assertNotEq(arbiter.getMinLinkDataStreams(), newMinLinkDataStreams);
+        vm.prank(governor);
+        arbiter.setMinLinkDataStreams(newMinLinkDataStreams);
+        assertEq(arbiter.getMinLinkDataStreams(), newMinLinkDataStreams);
     }
 
     function test__Arbiter_setVerifier() public {

@@ -114,6 +114,8 @@ contract Arbiter is IArbiter, AutomationCompatibleInterface, StreamsLookupCompat
     address private immutable i_linkToken;
     /// @dev Maximum staleness allowed for price data in seconds. Prices older than this will be considered invalid.
     uint32 private s_priceMaxStaleness;
+    /// @dev Minimum Arbiter LINK balance required to request data streams reports. If the balance falls below this threshold, data feeds will be used instead.
+    uint64 private s_minLinkDataStreams;
     /// @dev Array of DEX adapter interfaces used for handling token swaps.
     IDexAdapter[] private s_adapters;
     /// @dev Mapping from each self-balancing pool address to its corresponding Arbiter job configuration.
@@ -130,6 +132,7 @@ contract Arbiter is IArbiter, AutomationCompatibleInterface, StreamsLookupCompat
     event VerifierProxyChanged(address verifierProxy);
     event FeeManagerChanged(address feeManager);
     event PriceMaxStalenessChanged(uint256 newStaleness);
+    event MinLinkDataStreamsChanged(uint256 newMinLink);
     event NewArbiterJob(address indexed selfBalancingPool, address indexed rewardVault);
     event ArbiterJobRemoved(address indexed selfBalancingPool);
     event NewDexAdapter(address adapter);
@@ -141,11 +144,16 @@ contract Arbiter is IArbiter, AutomationCompatibleInterface, StreamsLookupCompat
     // Functions          //
     ////////////////////////
 
-    constructor(address governor, address verifierProxy, address linkToken, uint32 priceMaxStaleness)
-        Governable(governor)
-    {
+    constructor(
+        address governor,
+        address verifierProxy,
+        address linkToken,
+        uint32 priceMaxStaleness,
+        uint64 minLinkDataStreams
+    ) Governable(governor) {
         _setVerifierProxy(verifierProxy);
         _setPriceMaxStaleness(priceMaxStaleness);
+        _setMinLinkDataStreams(minLinkDataStreams);
         i_linkToken = linkToken;
     }
 
@@ -161,6 +169,11 @@ contract Arbiter is IArbiter, AutomationCompatibleInterface, StreamsLookupCompat
     /// @inheritdoc IArbiter
     function setPriceMaxStaleness(uint32 priceMaxStaleness) external onlyGovernor {
         _setPriceMaxStaleness(priceMaxStaleness);
+    }
+
+    /// @inheritdoc IArbiter
+    function setMinLinkDataStreams(uint64 minLinkDataStreams) external onlyGovernor {
+        _setMinLinkDataStreams(minLinkDataStreams);
     }
 
     /// @inheritdoc IArbiter
@@ -350,6 +363,12 @@ contract Arbiter is IArbiter, AutomationCompatibleInterface, StreamsLookupCompat
         emit PriceMaxStalenessChanged(priceMaxStaleness);
     }
 
+    /// @param minLinkDataStreams The new minimum Arbiter LINK balance balance for requesting data streams report.
+    function _setMinLinkDataStreams(uint64 minLinkDataStreams) private {
+        s_minLinkDataStreams = minLinkDataStreams;
+        emit MinLinkDataStreamsChanged(minLinkDataStreams);
+    }
+
     /**
      * @dev Verifies an array of two encoded Chainlink Data Streams reports.
      * @param signedReports An array of exactly two encoded Chainlink Data Streams reports that need to be verified.
@@ -530,7 +549,10 @@ contract Arbiter is IArbiter, AutomationCompatibleInterface, StreamsLookupCompat
         string[] memory feedIDs = new string[](2);
         feedIDs[0] = s_dataStreams[jobConfig.tokenIn];
         feedIDs[1] = s_dataStreams[jobConfig.tokenOut];
-        if (bytes(feedIDs[0]).length == 0 || bytes(feedIDs[1]).length == 0) {
+        if (
+            bytes(feedIDs[0]).length == 0 || bytes(feedIDs[1]).length == 0
+                || IERC20(i_linkToken).balanceOf(address(this)) < s_minLinkDataStreams
+        ) {
             uint256 maxPriceStaleness = s_priceMaxStaleness;
             uint256 priceTokenIn = _getPriceFromDataFeed(jobConfig.tokenIn, maxPriceStaleness);
             uint256 priceTokenOut = _getPriceFromDataFeed(jobConfig.tokenOut, maxPriceStaleness);
@@ -614,6 +636,11 @@ contract Arbiter is IArbiter, AutomationCompatibleInterface, StreamsLookupCompat
     /// @inheritdoc IArbiter
     function getPriceMaxStaleness() external view returns (uint256) {
         return s_priceMaxStaleness;
+    }
+
+    /// @inheritdoc IArbiter
+    function getMinLinkDataStreams() external view returns (uint256) {
+        return s_minLinkDataStreams;
     }
 
     /// @inheritdoc IArbiter
