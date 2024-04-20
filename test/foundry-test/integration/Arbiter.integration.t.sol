@@ -10,8 +10,8 @@ import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUn
 import {ERC20} from "../../mocks/ERC20Mock.sol";
 import {IFlashLiquidityFactory} from "../../../contracts/interfaces/IFlashLiquidityFactory.sol";
 import {ArbiterHelpers} from "../../helpers/ArbiterHelpers.sol";
-import {UniswapV2Adapter} from "../../../contracts/adapters/UniswapV2Adapter.sol";
-import {UniswapV3Adapter} from "../../../contracts/adapters/UniswapV3Adapter.sol";
+import {UniswapV2Adapter} from "../../mocks/adapters/UniswapV2Adapter.sol";
+import {UniswapV3Adapter} from "../../mocks/adapters/UniswapV3Adapter.sol";
 
 contract ArbiterIntegrationTest is Test, ArbiterHelpers {
     Arbiter arbiter;

@@ -2,7 +2,7 @@
 
 pragma solidity 0.8.19;
 
-import {IDexAdapter} from "../interfaces/IDexAdapter.sol";
+import {IDexAdapter} from "../../../contracts/interfaces/IDexAdapter.sol";
 /**
  * @title DexAdapter
  * @author Oddcod3 (@oddcod3)
