@@ -13,7 +13,7 @@ const PRIVATE_KEY = process.env.PRIVATE_KEY
 const ETHEREUM_RPC = "https://eth.llamarpc.com" || process.env.ETHEREUM_RPC
 const ETHEREUM_SEPOLIA_RPC = "https://rpc.sepolia.org" || process.env.ETHEREUM_SEPOLIA_RPC
 const BASE_RPC = "https://mainnet.base.org" || process.env.BASE_RPC
-const BASE_GOERLI_RPC = "https://goerli.base.org" || process.env.BASE_GOERLI_RPC
+const BASE_SEPOLIA_RPC = "https://sepolia.base.org" || process.env.BASE_SEPOLIA_RPC
 const POLYGON_MAINNET_RPC = "https://rpc-mainnet.maticvigil.com" || process.env.POLYGON_MAINNET_RPC
 const POLYGON_MUMBAI_RPC = "https://rpc-mumbai.maticvigil.com/" || process.env.POLYGON_MUMBAI_RPC
 const POLYGON_ZKEVM_TESTNET_RPC = "https://rpc.public.zkevm-test.net" || process.env.POLYGON_ZKEVM_TESTNET_RPC
@@ -33,7 +33,7 @@ const config: HardhatUserConfig = {
             zkevm: process.env.ZKEVMSCAN_API_KEY,
             zkevm_testnet: process.env.ZKEVMSCAN_API_KEY,
             base: process.env.BASESCAN_API_KEY,
-            base_goerli: process.env.BASESCAN_API_KEY,
+            base_sepolia: process.env.BASESCAN_API_KEY,
             avalanche: process.env.SNOWTRACE_API_KEY,
             avalancheFujiTestnet: process.env.SNOWTRACE_API_KEY,
             arbitrum: process.env.ARBISCAN_API_KEY,
@@ -50,11 +50,11 @@ const config: HardhatUserConfig = {
                 }
             },
             {
-                network: "base_goerli",
-                chainId: 84531,
+                network: "base_sepolia",
+                chainId: 84532,
                 urls: {
-                    apiURL: "https://api-goerli.basescan.org/api",
-                    browserURL: "https://goerli.basescan.org"
+                    apiURL: "https://api-sepolia.basescan.org/api",
+                    browserURL: "https://sepolia.basescan.org"
                 }
             },
             {
@@ -98,9 +98,9 @@ const config: HardhatUserConfig = {
             saveDeployments: true,
             accounts: [PRIVATE_KEY],
         },
-        base_goerli: {
-            url: BASE_GOERLI_RPC,
-            chainId: 84531,
+        base_sepolia: {
+            url: BASE_SEPOLIA_RPC,
+            chainId: 84532,
             live: true,
             saveDeployments: true,
             gasMultiplier: 3,
