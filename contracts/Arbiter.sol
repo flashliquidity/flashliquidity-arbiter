@@ -134,7 +134,7 @@ contract Arbiter is IArbiter, AutomationCompatibleInterface, StreamsLookupCompat
     event MinLinkDataStreamsChanged(uint256 newMinLink);
     event NewArbiterJob(address indexed selfBalancingPool, address indexed rewardVault);
     event ArbiterJobRemoved(address indexed selfBalancingPool);
-    event NewDexAdapter(address adapter);
+    event DexAdapterAdded(address adapter);
     event DexAdapterRemoved(address adapter);
     event DataFeedsChanged(address[] tokens, address[] dataFeeds);
     event DataStreamsChanged(address[] tokens, string[] feedIDs);
@@ -246,7 +246,7 @@ contract Arbiter is IArbiter, AutomationCompatibleInterface, StreamsLookupCompat
     /// @inheritdoc IArbiter
     function pushDexAdapter(address adapter) external onlyGovernor {
         s_adapters.push(IDexAdapter(adapter));
-        emit NewDexAdapter(adapter);
+        emit DexAdapterAdded(adapter);
     }
 
     /// @inheritdoc IArbiter
