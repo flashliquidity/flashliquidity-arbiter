@@ -132,7 +132,7 @@ contract Arbiter is IArbiter, AutomationCompatibleInterface, StreamsLookupCompat
     event VerifierProxyChanged(address verifierProxy);
     event PriceMaxStalenessChanged(uint256 newStaleness);
     event MinLinkDataStreamsChanged(uint256 newMinLink);
-    event NewArbiterJob(address indexed selfBalancingPool, address indexed rewardVault);
+    event ArbiterJobChanged(address indexed selfBalancingPool, address indexed rewardVault);
     event ArbiterJobRemoved(address indexed selfBalancingPool);
     event DexAdapterAdded(address adapter);
     event DexAdapterRemoved(address adapter);
@@ -234,7 +234,7 @@ contract Arbiter is IArbiter, AutomationCompatibleInterface, StreamsLookupCompat
             tokenOut: token1,
             tokenOutDecimals: forceToken1Decimals > 0 ? forceToken1Decimals : IERC20Metadata(token1).decimals()
         });
-        emit NewArbiterJob(selfBalancingPool, rewardVault);
+        emit ArbiterJobChanged(selfBalancingPool, rewardVault);
     }
 
     /// @inheritdoc IArbiter
