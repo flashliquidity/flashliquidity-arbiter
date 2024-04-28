@@ -130,7 +130,6 @@ contract Arbiter is IArbiter, AutomationCompatibleInterface, StreamsLookupCompat
     ///////////////////////
 
     event VerifierProxyChanged(address verifierProxy);
-    event FeeManagerChanged(address feeManager);
     event PriceMaxStalenessChanged(uint256 newStaleness);
     event MinLinkDataStreamsChanged(uint256 newMinLink);
     event NewArbiterJob(address indexed selfBalancingPool, address indexed rewardVault);
