@@ -1,8 +1,5 @@
-import "@nomiclabs/hardhat-waffle"
-import "@nomiclabs/hardhat-etherscan"
-import "@nomiclabs/hardhat-ethers"
-import "hardhat-deploy"
-import "hardhat-deploy-ethers"
+import "@nomicfoundation/hardhat-ethers"
+import "@nomicfoundation/hardhat-verify"
 import "dotenv/config"
 import importToml from "import-toml"
 import { HardhatUserConfig } from "hardhat/config"
@@ -30,50 +27,15 @@ const config: HardhatUserConfig = {
             sepolia: process.env.ETHERSCAN_API_KEY,
             polygon: process.env.POLYGONSCAN_API_KEY,
             polygonMumbai: process.env.POLYGONSCAN_API_KEY,
-            zkevm: process.env.ZKEVMSCAN_API_KEY,
-            zkevm_testnet: process.env.ZKEVMSCAN_API_KEY,
+            polygonZkEVM: process.env.ZKEVMSCAN_API_KEY,
+            polygonZkEVMTestnet: process.env.ZKEVMSCAN_API_KEY,
             base: process.env.BASESCAN_API_KEY,
-            base_sepolia: process.env.BASESCAN_API_KEY,
+            baseSepolia: process.env.BASESCAN_API_KEY,
             avalanche: process.env.SNOWTRACE_API_KEY,
             avalancheFujiTestnet: process.env.SNOWTRACE_API_KEY,
             arbitrum: process.env.ARBISCAN_API_KEY,
-            arbitrum_sepolia: process.env.ARBISCAN_API_KEY
-        },
-        customChains: [
-
-            {
-                network: "base",
-                chainId: 8453,
-                urls: {
-                    apiURL: "https://api.basescan.org/api",
-                    browserURL: "https://basescan.org"
-                }
-            },
-            {
-                network: "base_sepolia",
-                chainId: 84532,
-                urls: {
-                    apiURL: "https://api-sepolia.basescan.org/api",
-                    browserURL: "https://sepolia.basescan.org"
-                }
-            },
-            {
-                network: "zkevm",
-                chainId: 1101,
-                urls: {
-                    apiURL: "https://api-zkevm.polygonscan.com/api",
-                    browserURL: "https://zkevm.polygonscan.com/"
-                }
-            },
-            {
-                network: "zkevm_testnet",
-                chainId: 1442,
-                urls: {
-                    apiURL: "https://api-zkevm.polygonscan.com/api",
-                    browserURL: "https://zkevm.polygonscan.com/"
-                }
-            }
-        ]
+            arbitrumSepolia: process.env.ARBISCAN_API_KEY
+        }
     },
     networks: {
         ethereum: {
