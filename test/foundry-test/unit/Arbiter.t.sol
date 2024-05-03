@@ -7,8 +7,6 @@ import {Vm} from "forge-std/Vm.sol";
 import {Arbiter} from "../../../contracts/Arbiter.sol";
 import {Governable} from "flashliquidity-acs/contracts/Governable.sol";
 import {ERC20, ERC20Mock} from "../../mocks/ERC20Mock.sol";
-import {FeeManagerMock} from "../../mocks/FeeManagerMock.sol";
-import {VerifierProxyMock} from "../../mocks/VerifierProxyMock.sol";
 import {FlashLiquidityPairMock} from "../../mocks/FlashLiquidityPairMock.sol";
 import {ArbiterHelpers} from "../../helpers/ArbiterHelpers.sol";
 
@@ -18,7 +16,7 @@ contract ArbiterTest is Test, ArbiterHelpers {
     ERC20Mock mockToken;
     FlashLiquidityPairMock pairMock;
     address governor = makeAddr("governor");
-    address verifierProxy;
+    address verifierProxy = makeAddr("verifierProxy");
     address feeManager;
     address bob = makeAddr("bob");
     address alice = makeAddr("alice");
@@ -32,8 +30,6 @@ contract ArbiterTest is Test, ArbiterHelpers {
         vm.prank(governor);
         linkToken = new ERC20Mock("LINK", "LINK", supply);
         mockToken = new ERC20Mock("MOCK", "MOCK", supply);
-        feeManager = address(new FeeManagerMock(address(linkToken)));
-        verifierProxy = address(new VerifierProxyMock(feeManager));
         pairMock = new FlashLiquidityPairMock(address(linkToken), address(mockToken), governor);
         arbiter = new Arbiter(governor, verifierProxy, address(linkToken), priceMaxStaleness, minLinkDataStreams);
     }
