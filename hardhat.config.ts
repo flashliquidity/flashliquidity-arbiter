@@ -33,7 +33,7 @@ const config: HardhatUserConfig = {
             baseSepolia: process.env.BASESCAN_API_KEY,
             avalanche: process.env.SNOWTRACE_API_KEY,
             avalancheFujiTestnet: process.env.SNOWTRACE_API_KEY,
-            arbitrum: process.env.ARBISCAN_API_KEY,
+            arbitrumOne: process.env.ARBISCAN_API_KEY,
             arbitrumSepolia: process.env.ARBISCAN_API_KEY
         }
     },

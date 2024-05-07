@@ -1,7 +1,7 @@
 ArbiterFuzzTest:test() (gas: 186)
 ArbiterFuzzTest:testFuzz__Arbiter_gettersCantRevert(address,address,uint256) (runs: 1000, μ: 39202, ~: 39211)
 ArbiterIntegrationTest:test() (gas: 186)
-ArbiterIntegrationTest:testIntegration__Arbiter_performUpkeep() (gas: 417746)
+ArbiterIntegrationTest:testIntegration__Arbiter_performUpkeep() (gas: 416529)
 ArbiterTest:test() (gas: 208)
 ArbiterTest:test__Arbiter__performUpkeepRevertIfNotForwarder() (gas: 332270)
 ArbiterTest:test__Arbiter_deleteArbiterJob() (gas: 352245)
